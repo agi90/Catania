@@ -90,8 +90,17 @@ function getCursorPosition(canvas, event, state) {
 
   for (const [key, hex] of Object.entries(state.hexes)) {
     state.hexes[key].selected = hex.hitCheck(x, y);
-    state.dirty = true;
   }
+
+  for (const [key, vertex] of Object.entries(state.vertexes)) {
+    state.vertexes[key].selected = vertex.hitCheck(x, y);
+  }
+
+  for (const [key, edge] of Object.entries(state.edges)) {
+    state.edges[key].selected = edge.hitCheck(x, y);
+  }
+
+  state.dirty = true;
 }
 
 function paint(state, canvas) {
@@ -99,6 +108,14 @@ function paint(state, canvas) {
 
   for (const hex of state.hexes) {
     hex.draw(context);
+  }
+
+  for (const vertex of state.vertexes) {
+    vertex.draw(context);
+  }
+
+  for (const edge of state.edges) {
+    edge.draw(context);
   }
 }
 
@@ -131,13 +148,38 @@ class Vertex {
     this.text = text;
     this.size = size;
     this.hexes = hexes;
+    this.radius = size / 4;
+    this.selected = false;
+  }
+
+  hitCheck(a, b) {
+    const { x, y, radius } = this;
+
+    // Translate to origin
+    const x0 = a - x;
+    const y0 = b - y;
+
+    // Outside of bounding box?
+    if (x0 > 2 * radius || y0 > 2 * radius) {
+      return false;
+      // Distance from center
+    } else if (Math.sqrt(x0 * x0 + y0 * y0) < radius) {
+      return true;
+    }
+
+    return false;
   }
 
   draw(context) {
-    const { x, y, size, text } = this;
+    if (!this.selected) {
+      return;
+    }
+
+    const { x, y, size, radius, text } = this;
+
     context.fillStyle = "#000";
     context.beginPath();
-    context.arc(x, y, size / 4, 0, 2 * Math.PI);
+    context.arc(x, y, radius, 0, 2 * Math.PI);
     context.fill();
 
     context.font = size / 5 + "px serif";
@@ -153,35 +195,33 @@ class Edge {
     this.vertexes = vertexes;
     this.text = text;
     this.size = size;
+    this.selected = false;
 
     // compute common hexes
     const setA = new Set(vertexes[0].hexes);
     const setB = new Set(vertexes[1].hexes);
+
     this.hexes = [];
+
     for (const hex of setA) {
       if (setB.has(hex)) {
         this.hexes.push(hex);
       }
     }
-  }
 
-  draw(context) {
-    const { hexes, size, text } = this;
+    // Arrays containing coordinates of the three hexes that intersect in this
+    // edge
+    const X = this.hexes.map((hex) => hex.poly.x);
+    const Y = this.hexes.map((hex) => hex.poly.y);
 
-    const x = hexes.map((hex) => hex.poly.x);
-    const y = hexes.map((hex) => hex.poly.y);
-
-    const xMid = (x[0] + x[1]) / 2;
-    const yMid = (y[0] + y[1]) / 2;
-
-    context.fillStyle = "#F00";
-    context.beginPath();
+    this.x = (X[0] + X[1]) / 2;
+    this.y = (Y[0] + Y[1]) / 2;
 
     const height = size / 12;
     const width = size / 4;
 
-    if (x[0] != x[1] && y[0] != y[1]) {
-      const m = (-1 * (x[1] - x[0])) / (y[1] - y[0]);
+    if (X[0] != X[1] && Y[0] != Y[1]) {
+      const m = (-1 * (X[1] - X[0])) / (Y[1] - Y[0]);
 
       const xGap = width / Math.sqrt(1 + m * m);
       const yGap = (width * m) / Math.sqrt(1 + m * m);
@@ -189,12 +229,60 @@ class Edge {
       const xVGap = height / Math.sqrt(1 + 1 / m / m);
       const yVGap = height / m / Math.sqrt(1 + 1 / m / m);
 
-      context.moveTo(xMid + xGap - xVGap, yMid + yGap + yVGap);
-      context.lineTo(xMid + xGap + xVGap, yMid + yGap - yVGap);
-      context.lineTo(xMid - xGap + xVGap, yMid - yGap - yVGap);
-      context.lineTo(xMid - xGap - xVGap, yMid - yGap + yVGap);
-    } else if (y[0] == y[1]) {
-      context.rect(xMid - height, yMid - width, height * 2, width * 2);
+      this.xMax = Math.max(Math.abs(xGap - xVGap), Math.abs(xGap + xVGap));
+      this.yMax = Math.max(Math.abs(yGap - yVGap), Math.abs(yGap + yVGap));
+      this.xGap = xGap;
+      this.yGap = yGap;
+      this.xVGap = xVGap;
+      this.yVGap = yVGap;
+    } else {
+      this.xMax = width;
+      this.yMax = height;
+    }
+
+    this.height = height;
+    this.width = width;
+  }
+
+  hitCheck(a, b) {
+    const { x, y, xMax, yMax } = this;
+
+    // Translate to origin
+    const x0 = a - x;
+    const y0 = b - y;
+
+    return Math.abs(x0) < xMax && Math.abs(y0) < yMax;
+  }
+
+  draw(context) {
+    if (!this.selected) {
+      return;
+    }
+
+    const {
+      hexes,
+      size,
+      text,
+      x,
+      xGap,
+      xVGap,
+      y,
+      yGap,
+      yVGap,
+      height,
+      width,
+    } = this;
+
+    context.fillStyle = "#F00";
+    context.beginPath();
+
+    if (xGap) {
+      context.moveTo(x + xGap - xVGap, y + yGap + yVGap);
+      context.lineTo(x + xGap + xVGap, y + yGap - yVGap);
+      context.lineTo(x - xGap + xVGap, y - yGap - yVGap);
+      context.lineTo(x - xGap - xVGap, y - yGap + yVGap);
+    } else {
+      context.rect(x - height, y - width, height * 2, width * 2);
     }
 
     context.closePath();
@@ -204,7 +292,7 @@ class Edge {
     context.fillStyle = "#FFF";
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(text, xMid, yMid);
+    context.fillText(text, x, y);
   }
 }
 
