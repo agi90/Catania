@@ -1,4 +1,5 @@
 import { BoardData } from "./board-data.js";
+import { HexGraphics, VertexGraphics, EdgeGraphics } from "./graphics.js";
 
 window.onLoad = function () {
   const canvas = document.querySelector("canvas");
@@ -16,35 +17,75 @@ window.onLoad = function () {
     }
   }
 
-  const state = initState(size, saveState);
+  const state = initState(saveState);
+  const graphicsState = initGraphicsState(state, size);
+
+  const stateObserver = {
+    onStateChange(newState) {
+      graphicsState.dirty = true;
+    },
+  };
+
+  for (const element of [...state.hexes, ...state.vertexes, ...state.edges]) {
+    element.stateObserver = stateObserver;
+  }
+
   // force first paint
-  state.dirty = true;
+  graphicsState.dirty = true;
 
   canvas.addEventListener("mousemove", function (e) {
-    getCursorPosition(canvas, e, state);
+    const [x, y] = getCoordinates(canvas, e);
+    const { vertexGraphics, edgeGraphics, hexGraphics } = hitCheck(
+      x,
+      y,
+      graphicsState
+    );
+    if (vertexGraphics) {
+      vertexGraphics.vertex.onMouseMove();
+    } else if (edgeGraphics) {
+      edgeGraphics.edge.onMouseMove();
+    } else if (hexGraphics) {
+      hexGraphics.hex.onMouseMove();
+    }
+  });
+
+  canvas.addEventListener("click", function (e) {
+    const [x, y] = getCoordinates(canvas, e);
+    const { vertexGraphics, edgeGraphics, hexGraphics } = hitCheck(
+      x,
+      y,
+      graphicsState
+    );
+    if (vertexGraphics) {
+      vertexGraphics.vertex.onClick();
+    } else if (edgeGraphics) {
+      edgeGraphics.edge.onClick();
+    } else if (hexGraphics) {
+      hexGraphics.hex.onClick();
+    }
   });
 
   window.onresize = () => {
     context.canvas.width = window.innerWidth * 2;
     context.canvas.height = window.innerHeight * 2;
-    state.dirty = true;
+    graphicsState.dirty = true;
   };
 
   window.onresize();
 
   function frame() {
-    if (state.dirty) {
+    if (graphicsState.dirty) {
       context.clearRect(0, 0, canvas.width, canvas.height);
-      paint(state, canvas);
+      paint(graphicsState, canvas);
     }
-    state.dirty = false;
+    graphicsState.dirty = false;
     window.requestAnimationFrame(frame);
   }
 
   window.requestAnimationFrame(frame);
 };
 
-function initState(size, saveState) {
+function initState(saveState) {
   const hexes = [];
 
   for (let id = 0; id < BoardData.hexes.length; id++) {
@@ -52,7 +93,6 @@ function initState(size, saveState) {
     const hex = new Hex(
       x,
       y,
-      size,
       edge ? "edge" : saveState.tiles[id],
       edge ? "" : saveState.pins[id],
       edge
@@ -63,58 +103,94 @@ function initState(size, saveState) {
   const vertexes = [];
 
   for (const [a, b, c] of BoardData.vertexes) {
-    const vertex = new Vertex(
-      [hexes[a], hexes[b], hexes[c]],
-      size,
-      vertexes.length
-    );
+    const vertex = new Vertex([hexes[a], hexes[b], hexes[c]], vertexes.length);
     vertexes.push(vertex);
   }
 
   const edges = [];
 
   for (const [a, b] of BoardData.edges) {
-    const edge = new Edge([vertexes[a], vertexes[b]], size, edges.length);
+    const edge = new Edge([vertexes[a], vertexes[b]], edges.length);
     edges.push(edge);
   }
 
   return { hexes, vertexes, edges };
 }
 
-function getCursorPosition(canvas, event, state) {
+function initGraphicsState(state, size) {
+  const graphicsState = {
+    hexes: {},
+    vertexes: {},
+    edges: {},
+  };
+
+  const { hexes, vertexes, edges } = state;
+
+  for (const [key, hex] of Object.entries(hexes)) {
+    graphicsState.hexes[key] = new HexGraphics(hex, size);
+  }
+
+  for (const [key, vertex] of Object.entries(vertexes)) {
+    graphicsState.vertexes[key] = new VertexGraphics(vertex, size);
+  }
+
+  for (const [key, edge] of Object.entries(edges)) {
+    graphicsState.edges[key] = new EdgeGraphics(edge, size);
+  }
+
+  return graphicsState;
+}
+
+function hitCheck(x, y, state) {
+  const result = {
+    hexGraphics: null,
+    vertexGraphics: null,
+    edgeGraphics: null,
+  };
+
+  for (const hex of Object.values(state.hexes)) {
+    if (hex.hitCheck(x, y)) {
+      result.hexGraphics = hex;
+    }
+  }
+
+  for (const vertex of Object.values(state.vertexes)) {
+    if (vertex.hitCheck(x, y)) {
+      result.vertexGraphics = vertex;
+    }
+  }
+
+  for (const edge of Object.values(state.edges)) {
+    if (edge.hitCheck(x, y)) {
+      result.edgeGraphics = edge;
+    }
+  }
+
+  return result;
+}
+
+function getCoordinates(canvas, event) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
   const x = (event.clientX - rect.left) * scaleX;
   const y = (event.clientY - rect.top) * scaleY;
-
-  for (const [key, hex] of Object.entries(state.hexes)) {
-    state.hexes[key].selected = hex.hitCheck(x, y);
-  }
-
-  for (const [key, vertex] of Object.entries(state.vertexes)) {
-    state.vertexes[key].selected = vertex.hitCheck(x, y);
-  }
-
-  for (const [key, edge] of Object.entries(state.edges)) {
-    state.edges[key].selected = edge.hitCheck(x, y);
-  }
-
-  state.dirty = true;
+  return [x, y];
 }
 
 function paint(state, canvas) {
   const context = canvas.getContext("2d");
+  const { hexes, vertexes, edges } = state;
 
-  for (const hex of state.hexes) {
+  for (const hex of Object.values(hexes)) {
     hex.draw(context);
   }
 
-  for (const vertex of state.vertexes) {
+  for (const vertex of Object.values(vertexes)) {
     vertex.draw(context);
   }
 
-  for (const edge of state.edges) {
+  for (const edge of Object.values(edges)) {
     edge.draw(context);
   }
 }
@@ -138,64 +214,50 @@ function generateRandomValueArray(descriptor) {
   return values;
 }
 
-class Vertex {
-  constructor(hexes, size, text) {
-    const x = hexes.map((hex) => hex.poly.x);
-    const y = hexes.map((hex) => hex.poly.y);
-
-    this.x = (x[0] + x[1] + x[2]) / 3;
-    this.y = (y[0] + y[1] + y[2]) / 3;
-    this.text = text;
-    this.size = size;
-    this.hexes = hexes;
-    this.radius = size / 4;
-    this.selected = false;
+class Element {
+  constructor() {
+    this.stateObserver = null;
+    this._state = {};
   }
 
-  hitCheck(a, b) {
-    const { x, y, radius } = this;
-
-    // Translate to origin
-    const x0 = a - x;
-    const y0 = b - y;
-
-    // Outside of bounding box?
-    if (x0 > 2 * radius || y0 > 2 * radius) {
-      return false;
-      // Distance from center
-    } else if (Math.sqrt(x0 * x0 + y0 * y0) < radius) {
-      return true;
+  setState(values) {
+    for (const [key, value] of Object.entries(values)) {
+      this._state[key] = value;
     }
 
-    return false;
+    if (this.stateObserver) {
+      this.stateObserver.onStateChange(this._state);
+    }
   }
 
-  draw(context) {
-    if (!this.selected) {
-      return;
-    }
-
-    const { x, y, size, radius, text } = this;
-
-    context.fillStyle = "#000";
-    context.beginPath();
-    context.arc(x, y, radius, 0, 2 * Math.PI);
-    context.fill();
-
-    context.font = size / 5 + "px serif";
-    context.fillStyle = "#FFF";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(text, x, y);
+  get state() {
+    return this._state;
   }
 }
 
-class Edge {
-  constructor(vertexes, size, text) {
+class Vertex extends Element {
+  constructor(hexes, text) {
+    super();
+
+    this.hexes = hexes;
+    this.text = text;
+    this.setState({ selected: false });
+  }
+
+  onClick() {
+    this.setState({ selected: !this.state.selected });
+  }
+
+  onMouseMove() {}
+}
+
+class Edge extends Element {
+  constructor(vertexes, text) {
+    super();
+
     this.vertexes = vertexes;
     this.text = text;
-    this.size = size;
-    this.selected = false;
+    this.setState({ selected: false });
 
     // compute common hexes
     const setA = new Set(vertexes[0].hexes);
@@ -208,202 +270,30 @@ class Edge {
         this.hexes.push(hex);
       }
     }
-
-    // Arrays containing coordinates of the three hexes that intersect in this
-    // edge
-    const X = this.hexes.map((hex) => hex.poly.x);
-    const Y = this.hexes.map((hex) => hex.poly.y);
-
-    this.x = (X[0] + X[1]) / 2;
-    this.y = (Y[0] + Y[1]) / 2;
-
-    const height = size / 12;
-    const width = size / 4;
-
-    if (X[0] != X[1] && Y[0] != Y[1]) {
-      const m = (-1 * (X[1] - X[0])) / (Y[1] - Y[0]);
-
-      const xGap = width / Math.sqrt(1 + m * m);
-      const yGap = (width * m) / Math.sqrt(1 + m * m);
-
-      const xVGap = height / Math.sqrt(1 + 1 / m / m);
-      const yVGap = height / m / Math.sqrt(1 + 1 / m / m);
-
-      this.xMax = Math.max(Math.abs(xGap - xVGap), Math.abs(xGap + xVGap));
-      this.yMax = Math.max(Math.abs(yGap - yVGap), Math.abs(yGap + yVGap));
-      this.xGap = xGap;
-      this.yGap = yGap;
-      this.xVGap = xVGap;
-      this.yVGap = yVGap;
-    } else {
-      this.xMax = width;
-      this.yMax = height;
-    }
-
-    this.height = height;
-    this.width = width;
   }
 
-  hitCheck(a, b) {
-    const { x, y, xMax, yMax } = this;
-
-    // Translate to origin
-    const x0 = a - x;
-    const y0 = b - y;
-
-    return Math.abs(x0) < xMax && Math.abs(y0) < yMax;
+  onClick() {
+    this.setState({ selected: !this.state.selected });
   }
 
-  draw(context) {
-    if (!this.selected) {
-      return;
-    }
-
-    const {
-      hexes,
-      size,
-      text,
-      x,
-      xGap,
-      xVGap,
-      y,
-      yGap,
-      yVGap,
-      height,
-      width,
-    } = this;
-
-    context.fillStyle = "#F00";
-    context.beginPath();
-
-    if (xGap) {
-      context.moveTo(x + xGap - xVGap, y + yGap + yVGap);
-      context.lineTo(x + xGap + xVGap, y + yGap - yVGap);
-      context.lineTo(x - xGap + xVGap, y - yGap - yVGap);
-      context.lineTo(x - xGap - xVGap, y - yGap + yVGap);
-    } else {
-      context.rect(x - height, y - width, height * 2, width * 2);
-    }
-
-    context.closePath();
-    context.fill();
-
-    context.font = size / 5 + "px serif";
-    context.fillStyle = "#FFF";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(text, x, y);
-  }
+  onMouseMove() {}
 }
 
-class Hex {
-  constructor(x, y, size, type, value, isEdge) {
-    const xGap = (Math.sqrt(3) * size) / 2 + 1 / 2;
-    const yGap = size / 2 + 1 / 3;
+class Hex extends Element {
+  constructor(x, y, type, value, isEdge) {
+    super();
+
+    this.x = x;
+    this.y = y;
     this.type = type;
     this.value = value;
     this.isEdge = isEdge;
-    this.selected = false;
-    this.poly = new HexPoly(
-      xGap * x,
-      yGap * y,
-      size,
-      BoardData.resourceTypeColor[type],
-      value,
-      BoardData.pinsSub[value]
-    );
+    this.setState({ selected: false });
   }
 
-  hitCheck(x, y) {
-    return this.poly.hitCheck(x, y);
+  onClick() {
+    this.setState({ selected: !this.state.selected });
   }
 
-  draw(context) {
-    const { poly, selected } = this;
-    poly.draw(context, selected);
-  }
-}
-
-class HexPoly {
-  constructor(x, y, size, color, text, subText) {
-    this.x = x;
-    this.y = y;
-    this.size = size;
-    this.color = color;
-    this.text = text;
-    this.subText = subText;
-
-    this.xGap = (Math.sqrt(3) * size) / 2;
-    this.yGap = size / 2;
-  }
-
-  hitCheck(a, b) {
-    const { x, y, xGap, yGap } = this;
-
-    // Translate everything so that the hex is centered at the origin
-    const x0 = a - x;
-    const y0 = b - y;
-
-    // If outside of the bounding box, definitely not a hit
-    if (x0 < -xGap || x0 > xGap || y0 < -yGap * 2 || y0 > yGap * 2) {
-      return false;
-      // If inside small square, definitely a hit
-    } else if (y0 > -yGap && y0 < yGap) {
-      return true;
-      // Triangles
-    } else if (x0 > 0 && y0 > 0) {
-      return y0 < (-yGap / xGap) * x0 + 2 * yGap;
-    } else if (x0 < 0 && y0 > 0) {
-      return y0 < (yGap / xGap) * x0 + 2 * yGap;
-    } else if (x0 > 0 && y0 < 0) {
-      return y0 > (yGap / xGap) * x0 - 2 * yGap;
-    } else if (x0 < 0 && y0 < 0) {
-      return y0 > (-yGap / xGap) * x0 - 2 * yGap;
-    }
-
-    return false;
-  }
-
-  draw(context, mouseOver = false) {
-    const { x, y, xGap, yGap, size, color, text, subText } = this;
-
-    context.globalAlpha = mouseOver ? 0.5 : 1;
-    context.fillStyle = color;
-    context.beginPath();
-
-    context.moveTo(x, y + yGap * 2);
-    context.lineTo(x + xGap, y + yGap);
-    context.lineTo(x + xGap, y - yGap);
-    context.lineTo(x, y - yGap * 2);
-    context.lineTo(x - xGap, y - yGap);
-    context.lineTo(x - xGap, y + yGap);
-
-    context.closePath();
-    context.fill();
-
-    context.globalAlpha = 1;
-
-    if (text !== "") {
-      context.fillStyle = "#eecd9e";
-      context.beginPath();
-      context.arc(x, y, size / 2.5, 0, 2 * Math.PI);
-      context.fill();
-    }
-
-    let fillColor = "#000";
-    if (text == "8" || text == "6") {
-      fillColor = "#C44";
-    }
-
-    context.font = "bold " + size / 3 + "px verdana";
-    context.fillStyle = fillColor;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(text, x, y);
-
-    if (subText) {
-      context.font = size / 4 + "px sans-serif";
-      context.fillText(subText, x, y + size / 4);
-    }
-  }
+  onMouseMove() {}
 }
