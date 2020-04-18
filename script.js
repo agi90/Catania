@@ -7,8 +7,6 @@ window.onLoad = function () {
   const canvas = document.querySelector("canvas");
   const context = canvas.getContext("2d");
 
-  const size = Math.min(window.innerWidth, window.innerHeight) / 6;
-
   const saveState = {};
   saveState.tiles = generateRandomValueArray(BoardData.tiles);
   saveState.pins = generateRandomValueArray(BoardData.pins);
@@ -20,7 +18,7 @@ window.onLoad = function () {
   }
 
   const state = initState(saveState);
-  const graphicsState = initGraphicsState(state, size);
+  const graphicsState = initGraphicsState(state);
 
   const stateObserver = {
     onEvent(event, state) {
@@ -42,8 +40,25 @@ window.onLoad = function () {
   }
 
   window.onresize = () => {
-    context.canvas.width = window.innerWidth * 2;
-    context.canvas.height = window.innerHeight * 2;
+    // XXX lots of magic numbers, mainly to make the board centered and of the right size
+    const canvasWidth =
+      Math.min(canvas.parentElement.clientWidth - 20, window.innerHeight) * 0.9;
+    const size = canvasWidth / 12.23;
+    const canvasHeight = canvasWidth * 0.91;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.style.width = canvasWidth + "px";
+    canvas.style.height = canvasHeight + "px";
+    canvas.width = canvasWidth * dpr;
+    canvas.height = canvasHeight * dpr;
+    context.scale(dpr, dpr);
+    const { hexes, vertexes, edges } = graphicsState;
+    for (const element of [
+      ...Object.values(hexes),
+      ...Object.values(vertexes),
+      ...Object.values(edges),
+    ]) {
+      element.size = size;
+    }
     graphicsState.dirty = true;
   };
 
@@ -93,7 +108,7 @@ function initState(saveState) {
   return { hexes, vertexes, edges };
 }
 
-function initGraphicsState(state, size) {
+function initGraphicsState(state) {
   const graphicsState = {
     hexes: {},
     vertexes: {},
@@ -103,15 +118,15 @@ function initGraphicsState(state, size) {
   const { hexes, vertexes, edges } = state;
 
   for (const [key, hex] of Object.entries(hexes)) {
-    graphicsState.hexes[key] = new HexGraphics(hex, size);
+    graphicsState.hexes[key] = new HexGraphics(hex);
   }
 
   for (const [key, vertex] of Object.entries(vertexes)) {
-    graphicsState.vertexes[key] = new VertexGraphics(vertex, size);
+    graphicsState.vertexes[key] = new VertexGraphics(vertex);
   }
 
   for (const [key, edge] of Object.entries(edges)) {
-    graphicsState.edges[key] = new EdgeGraphics(edge, size);
+    graphicsState.edges[key] = new EdgeGraphics(edge);
   }
 
   return graphicsState;
@@ -147,10 +162,8 @@ function hitCheck(x, y, state) {
 
 function getCoordinates(canvas, event) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const x = (event.clientX - rect.left) * scaleX;
-  const y = (event.clientY - rect.top) * scaleY;
+  const x = event.clientX - rect.left;
+  const y = event.clientY - rect.top;
   return [x, y];
 }
 
@@ -312,7 +325,7 @@ class Hex extends Element {
 
   fire(eventName, data) {
     super.fire(eventName, data);
-    if (eventName === "click") {
+    if (eventName === "click" && !this.isEdge) {
       this.setState({ selected: !this.state.selected });
       // handled
       return true;

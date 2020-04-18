@@ -1,15 +1,25 @@
 import { BoardData } from "./board-data.js";
 
 class Edge {
-  constructor(edge, size) {
-    const { hexes } = edge;
-
+  constructor(edge) {
     this.edge = edge;
-    this.size = size;
+  }
 
+  get size() {
+    return this._size;
+  }
+
+  set size(value) {
+    this._size = value;
+
+    const { hexes } = this.edge;
     // TODO: We probably don't need to create a brand new Hex just to
     // get the x and y value
-    const hexesGraphics = hexes.map((hex) => new Hex(hex, size));
+    const hexesGraphics = hexes.map((hex) => {
+      const hexGraphics = new Hex(hex);
+      hexGraphics.size = value;
+      return hexGraphics;
+    });
     // Arrays containing coordinates of the three hexes that intersect in this
     // edge
     const X = hexesGraphics.map((hex) => hex.poly.x);
@@ -18,8 +28,8 @@ class Edge {
     this.x = (X[0] + X[1]) / 2;
     this.y = (Y[0] + Y[1]) / 2;
 
-    const height = size / 12;
-    const width = size / 4;
+    const height = value / 12;
+    const width = value / 4;
 
     if (X[0] != X[1] && Y[0] != Y[1]) {
       const m = (-1 * (X[1] - X[0])) / (Y[1] - Y[0]);
@@ -98,19 +108,31 @@ class Edge {
 }
 
 class Vertex {
-  constructor(vertex, size) {
-    const { hexes } = vertex;
+  constructor(vertex) {
+    this.vertex = vertex;
+  }
+
+  get size() {
+    return this._size;
+  }
+
+  set size(value) {
+    this._size = value;
+
+    const { hexes } = this.vertex;
     // TODO: We probably don't need to create a brand new Hex just to
     // get the x and y value
-    const hexesGraphics = hexes.map((hex) => new Hex(hex, size));
+    const hexesGraphics = hexes.map((hex) => {
+      const hexGraphics = new Hex(hex);
+      hexGraphics.size = value;
+      return hexGraphics;
+    });
     const x = hexesGraphics.map((hex) => hex.poly.x);
     const y = hexesGraphics.map((hex) => hex.poly.y);
 
     this.x = (x[0] + x[1] + x[2]) / 3;
     this.y = (y[0] + y[1] + y[2]) / 3;
-    this.vertex = vertex;
-    this.size = size;
-    this.radius = size / 4;
+    this.radius = value / 4;
   }
 
   hitCheck(a, b) {
@@ -152,18 +174,26 @@ class Vertex {
 }
 
 class Hex {
-  constructor(hex, size) {
-    const { x, y, type, value, isEdge } = hex;
-    const xGap = (Math.sqrt(3) * size) / 2 + 1 / 2;
-    const yGap = size / 2 + 1 / 3;
+  constructor(hex) {
     this.hex = hex;
+  }
+
+  get size() {
+    return this._size;
+  }
+
+  set size(newSize) {
+    const { x, y, type, value, isEdge } = this.hex;
+    const xGap = (Math.sqrt(3) * newSize) / 2 + 1 / 2;
+    const yGap = newSize / 2 + 1 / 3;
+    this._size = newSize;
     this.type = type;
     this.value = value;
     this.isEdge = isEdge;
     this.poly = new HexPoly(
       xGap * x,
       yGap * y,
-      size,
+      newSize,
       BoardData.resourceTypeColor[type],
       value,
       BoardData.pinsSub[value]
