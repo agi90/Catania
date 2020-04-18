@@ -1,6 +1,8 @@
 import { BoardData } from "./board-data.js";
 import { HexGraphics, VertexGraphics, EdgeGraphics } from "./graphics.js";
 
+const FORWARD_MOUSE_EVENTS = ["mouseup", "mousedown", "click", "mousemove"];
+
 window.onLoad = function () {
   const canvas = document.querySelector("canvas");
   const context = canvas.getContext("2d");
@@ -21,49 +23,23 @@ window.onLoad = function () {
   const graphicsState = initGraphicsState(state, size);
 
   const stateObserver = {
-    onStateChange(newState) {
-      graphicsState.dirty = true;
+    onEvent(event, state) {
+      if (event === "statechange") {
+        graphicsState.dirty = true;
+      }
     },
   };
 
   for (const element of [...state.hexes, ...state.vertexes, ...state.edges]) {
-    element.stateObserver = stateObserver;
+    element.addObserver(stateObserver);
   }
 
   // force first paint
   graphicsState.dirty = true;
 
-  canvas.addEventListener("mousemove", function (e) {
-    const [x, y] = getCoordinates(canvas, e);
-    const { vertexGraphics, edgeGraphics, hexGraphics } = hitCheck(
-      x,
-      y,
-      graphicsState
-    );
-    if (vertexGraphics) {
-      vertexGraphics.vertex.onMouseMove();
-    } else if (edgeGraphics) {
-      edgeGraphics.edge.onMouseMove();
-    } else if (hexGraphics) {
-      hexGraphics.hex.onMouseMove();
-    }
-  });
-
-  canvas.addEventListener("click", function (e) {
-    const [x, y] = getCoordinates(canvas, e);
-    const { vertexGraphics, edgeGraphics, hexGraphics } = hitCheck(
-      x,
-      y,
-      graphicsState
-    );
-    if (vertexGraphics) {
-      vertexGraphics.vertex.onClick();
-    } else if (edgeGraphics) {
-      edgeGraphics.edge.onClick();
-    } else if (hexGraphics) {
-      hexGraphics.hex.onClick();
-    }
-  });
+  for (const eventName of FORWARD_MOUSE_EVENTS) {
+    forwardMouseEvent(eventName, canvas, graphicsState);
+  }
 
   window.onresize = () => {
     context.canvas.width = window.innerWidth * 2;
@@ -203,6 +179,31 @@ function shuffleArray(array) {
   }
 }
 
+function forwardMouseEvent(eventName, canvas, graphicsState) {
+  canvas.addEventListener(eventName, function (e) {
+    const [x, y] = getCoordinates(canvas, e);
+    const { vertexGraphics, edgeGraphics, hexGraphics } = hitCheck(
+      x,
+      y,
+      graphicsState
+    );
+
+    // Only fire the event on the next element in the hierarchy if the upper
+    // element didn't handle the event.
+    if (vertexGraphics && vertexGraphics.vertex.fire(eventName)) {
+      return;
+    }
+
+    if (edgeGraphics && edgeGraphics.edge.fire(eventName)) {
+      return;
+    }
+
+    if (hexGraphics && hexGraphics.hex.fire(eventName)) {
+      return;
+    }
+  });
+}
+
 function generateRandomValueArray(descriptor) {
   const values = [];
   for (const el of Object.keys(descriptor)) {
@@ -216,18 +217,30 @@ function generateRandomValueArray(descriptor) {
 
 class Element {
   constructor() {
-    this.stateObserver = null;
+    this._observers = [];
     this._state = {};
   }
 
+  addObserver(observer) {
+    this._observers.push(observer);
+  }
+
+  fire(eventName, data = null) {
+    let handled = false;
+    for (const observer of this._observers) {
+      handled = handled || observer.onEvent(eventName, this, data);
+    }
+    return handled;
+  }
+
   setState(values) {
+    const { _state, _observers } = this;
+
     for (const [key, value] of Object.entries(values)) {
-      this._state[key] = value;
+      _state[key] = value;
     }
 
-    if (this.stateObserver) {
-      this.stateObserver.onStateChange(this._state);
-    }
+    this.fire("statechange", _state);
   }
 
   get state() {
@@ -244,11 +257,14 @@ class Vertex extends Element {
     this.setState({ selected: false });
   }
 
-  onClick() {
-    this.setState({ selected: !this.state.selected });
+  fire(eventName, data) {
+    super.fire(eventName, data);
+    if (eventName === "click") {
+      this.setState({ selected: !this.state.selected });
+      // handled
+      return true;
+    }
   }
-
-  onMouseMove() {}
 }
 
 class Edge extends Element {
@@ -272,11 +288,14 @@ class Edge extends Element {
     }
   }
 
-  onClick() {
-    this.setState({ selected: !this.state.selected });
+  fire(eventName, data) {
+    super.fire(eventName, data);
+    if (eventName === "click") {
+      this.setState({ selected: !this.state.selected });
+      // handled
+      return true;
+    }
   }
-
-  onMouseMove() {}
 }
 
 class Hex extends Element {
@@ -291,9 +310,12 @@ class Hex extends Element {
     this.setState({ selected: false });
   }
 
-  onClick() {
-    this.setState({ selected: !this.state.selected });
+  fire(eventName, data) {
+    super.fire(eventName, data);
+    if (eventName === "click") {
+      this.setState({ selected: !this.state.selected });
+      // handled
+      return true;
+    }
   }
-
-  onMouseMove() {}
 }
