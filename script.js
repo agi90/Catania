@@ -23,35 +23,6 @@ window.onLoad = function () {
   console.log(state);
   const graphicsState = initGraphicsState(state);
 
-  const dice = [new Die("die1"), new Die("die2")];
-  const dieObserver = {
-    onEvent(eventName, target) {
-      let value = 0;
-      for (const die of dice) {
-        value += die.roll();
-      }
-      for (const hex of state.hexes) {
-        hex.setState({ selected: false });
-      }
-      for (const vertex of state.vertexes) {
-        vertex.setState({ selected: false });
-      }
-
-      for (const hex of state.hexes) {
-        if (hex.value === value) {
-          hex.setState({ selected: true });
-          for (const vertex of hex.vertexes) {
-            vertex.setState({ selected: true });
-          }
-        }
-      }
-    },
-  };
-
-  for (const die of dice) {
-    die.addObserver(dieObserver);
-  }
-
   const stateObserver = {
     onEvent(event, state) {
       if (event === "statechange") {
@@ -137,7 +108,7 @@ function initState(saveState) {
     edges.push(edge);
   }
 
-  const game = new Game(4, vertexes, edges);
+  const game = new Game(2, vertexes, edges, hexes);
 
   return { hexes, vertexes, edges, game };
 }

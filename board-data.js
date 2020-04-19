@@ -206,6 +206,8 @@ const TILES = {
   desert: 1,
 };
 
+const RESOURCES = ["wood", "ore", "sheep", "wheat", "brick", "edge"];
+
 const RESOURCE_TYPE_COLOR = {
   wood: "#1c4f1b",
   ore: "#968d7e",
@@ -249,5 +251,8 @@ export const BoardData = {
   },
   get playerColors() {
     return PLAYER_COLORS;
+  },
+  get resources() {
+    return RESOURCES;
   },
 };

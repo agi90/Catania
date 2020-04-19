@@ -1,3 +1,5 @@
+import { BoardData } from "./board-data.js";
+
 class Element {
   constructor() {
     this._observers = [];
@@ -52,7 +54,6 @@ class Vertex extends Element {
   get siblings() {
     if (!this._siblings) {
       this._siblings = [];
-      console.log(this.edges);
       for (const edge of this.edges) {
         for (const vertex of edge.vertexes) {
           if (vertex != this) {
@@ -108,16 +109,22 @@ class Hex extends Element {
     this.vertexes.push(vertex);
   }
 }
+
 const GAME_STATES = [
   // Player places his village
   "setup_village",
   // Player places his road
   "setup_road",
+  // Player must discard cards because the robber has been rolled
+  "robber_discard",
+  // Robber needs to be placed on the board
+  "robber_place",
   // Regular turn
   "turn",
 ];
 
 const SETUP_PLAYER_TURNS = {
+  "2": [0, 1, 1, 0], // Not legal, for testing
   "3": [0, 1, 2, 2, 1, 0],
   "4": [0, 1, 2, 3, 3, 2, 1, 0],
   "5": [0, 1, 2, 3, 4, 4, 3, 2, 1, 0],
@@ -128,11 +135,17 @@ class Player {
   constructor(id) {
     this.id = id;
     this.setupVillage = null;
+
+    this.cards = {};
+    for (const resource of BoardData.resources) {
+      this.cards[resource] = 0;
+    }
+    console.log(this);
   }
 }
 
 class Game {
-  constructor(players, vertexes, edges) {
+  constructor(players, vertexes, edges, hexes) {
     this.players = [];
     for (let i = 1; i <= players; i++) {
       this.players.push(new Player(i));
@@ -141,6 +154,15 @@ class Game {
     this._firstPlayer = Math.floor(Math.random() * players) + 1;
     this._setupTurn = 0;
     this._turn = null;
+    this.dice = [new Die("die1"), new Die("die2")];
+    const self = this;
+    this.dice[0].addObserver({
+      onEvent() {
+        if (self.step === "turn") {
+          self.nextTurn();
+        }
+      },
+    });
 
     for (const vertex of vertexes) {
       vertex.addObserver(this);
@@ -150,6 +172,7 @@ class Game {
     }
     this.edges = edges;
     this.vertexes = vertexes;
+    this.hexes = hexes;
     this.selectBuildable();
   }
 
@@ -165,14 +188,46 @@ class Game {
     if (target instanceof Vertex && this.canBuildVillage(target)) {
       target.setState({ player: this.currentPlayer.id });
       this.currentPlayer.setupVillage = target;
-      this.nextTurn();
+      if (this.step === "setup_village") {
+        this.nextTurn();
+      }
       return true;
     }
     if (target instanceof Edge && this.canBuildRoad(target)) {
       target.setState({ player: this.currentPlayer.id });
-      this.nextTurn();
+      if (this.step === "setup_road") {
+        this.nextTurn();
+      }
       return true;
     }
+  }
+
+  nextNonSetupTurn() {
+    console.log(this.currentPlayer);
+    let diceValue = 0;
+    for (const die of this.dice) {
+      diceValue += die.roll();
+    }
+    if (diceValue === 7) {
+      this.handleRobber();
+    }
+    for (const hex of this.hexes) {
+      if (hex.value !== diceValue) {
+        continue;
+      }
+      for (const vertex of hex.vertexes) {
+        // TODO: handle cities
+        const { player } = vertex.state;
+        if (player !== null) {
+          this.players[player - 1].cards[hex.type] += 1;
+        }
+      }
+    }
+    console.log(this.currentPlayer.cards);
+  }
+
+  handleRobber() {
+    console.log("Robber!");
   }
 
   nextTurn() {
@@ -188,10 +243,12 @@ class Game {
           this.step = "turn";
           this._setupTurn = null;
           this._turn = 0;
+          this.nextNonSetupTurn();
         }
         break;
       case "turn":
         this._turn += 1;
+        this.nextNonSetupTurn();
         break;
     }
     this.unselectAll();
@@ -223,7 +280,7 @@ class Game {
   }
 
   get currentPlayer() {
-    const { step, _setupTurn, players, _firstPlayer } = this;
+    const { step, _setupTurn, players, _firstPlayer, _turn } = this;
     if (step === "setup_village" || step === "setup_road") {
       const player_offset = SETUP_PLAYER_TURNS[players.length][_setupTurn];
       let player = _firstPlayer + player_offset;
@@ -232,6 +289,7 @@ class Game {
       }
       return this.players[player - 1];
     }
+    return players[(_turn + _firstPlayer - 1) % players.length];
   }
 
   canBuildRoad(edge) {
@@ -246,7 +304,27 @@ class Game {
         }
         return false;
       case "turn":
-        throw "Unimplemented!";
+        const { currentPlayer } = this;
+        const { wood, brick } = currentPlayer.cards;
+        // First, check if player has enough resources
+        if (wood < 1 || brick < 1) {
+          return false;
+        }
+        for (const vertex of edge.vertexes) {
+          // Can only build a road next to a village or..
+          if (vertex.state.player == currentPlayer.id) {
+            return true;
+          }
+          // .. next to another road, but only if there's no village
+          if (vertex.state.player === null) {
+            for (const edge of vertex.edges) {
+              if (edge.state.player === currentPlayer.id) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
     }
   }
 
@@ -263,7 +341,25 @@ class Game {
       case "setup_road":
         return false;
       case "turn":
-        throw "Unimplemented!";
+        const { currentPlayer } = this;
+        const { wood, brick, sheep, wheat } = currentPlayer.cards;
+        // First, check if player has enough resources
+        if (wood < 1 || brick < 1 || sheep < 1 || wheat < 1) {
+          return false;
+        }
+        for (const sibling of vertex.siblings) {
+          // Can't build a village next to another village
+          if (sibling.state.player !== null) {
+            return false;
+          }
+          // Village needs to be next to own road
+          for (const edge of vertex.edges) {
+            if (edge.state.player === currentPlayer.id) {
+              return true;
+            }
+          }
+        }
+        return false;
     }
   }
 }
