@@ -18,3 +18,35 @@
     align-items: center;
     flex-direction: column;
 }
+
+#dice-box {
+    width: 100px;
+}
+
+.die {
+    width: 50px;
+    height: 50px;
+    background: url("assets/die.svg");
+    background-size: 370px 300px;
+    background-position-y: -125px;
+    float: left;
+}
+
+.die-1 {
+    background-position-x: 343px;
+}
+.die-2 {
+    background-position-x: 291px;
+}
+.die-3 {
+    background-position-x: 239px;
+}
+.die-4 {
+    background-position-x: 187px;
+}
+.die-5 {
+    background-position-x: 135px;
+}
+.die-6 {
+    background-position-x: 83px;
+}

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 562.5 162.5" xmlns="http://www.w3.org/2000/svg">
+ <g transform="matrix(.5 0 0 .5 424.39 -101.75)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m75.5 290.36h50a50 50 0 0 1 50 50v50a50 50 0 0 1 -50 50h-50a50 50 0 0 1 -50 -50v-50a50 50 0 0 1 50 -50" fill="#fff"/>
+  <path transform="translate(-261 101.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-261 173.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-261 137.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-189 101.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-189 173.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-189 137.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+ <g transform="matrix(.5 0 0 .5 251.64 -95.497)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m263 277.86h50a50 50 0 0 1 50 50v50a50 50 0 0 1 -50 50h-50a50 50 0 0 1 -50 -50v-50a50 50 0 0 1 50 -50" fill="#fff"/>
+  <path transform="translate(-73.5 89)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-73.5 161)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-1.5 89)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-1.5 161)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(-37.5 125)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+ <g transform="matrix(.5 0 0 .5 66.393 -89.247)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m475.5 265.36h50a50 50 0 0 1 50 50v50a50 50 0 0 1 -50 50h-50a50 50 0 0 1 -50 -50v-50a50 50 0 0 1 50 -50" fill="#fff"/>
+  <path transform="translate(139 76.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(139 148.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(211 76.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(211 148.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+ <g transform="matrix(.5 0 0 .5 -6.3572 42.003)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m463,2.86218h50a50,50 0 0,1 50,50v50a50,50 0 0,1 -50,50h-50a50,50 0 0,1 -50-50v-50a50,50 0 0,1 50-50" fill="#fff"/>
+  <path transform="translate(126.5 -186)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(198.5 -114)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(162.5 -150)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+ <g transform="matrix(.5 0 0 .5 -185.36 23.253)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m663 40.362h50a50 50 0 0 1 50 50v50a50 50 0 0 1 -50 50h-50a50 50 0 0 1 -50 -50v-50a50 50 0 0 1 50 -50" fill="#fff"/>
+  <path transform="translate(326.5 -148.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+  <path transform="translate(398.5 -76.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+ <g transform="matrix(.5 0 0 .5 -251.86 -76.747)" fill-rule="evenodd" stroke="#000" stroke-width="3">
+  <path d="m638 240.36h50a50 50 0 0 1 50 50v50a50 50 0 0 1 -50 50h-50a50 50 0 0 1 -50 -50v-50a50 50 0 0 1 50 -50" fill="#fff"/>
+  <path transform="translate(337.5 87.5)" d="m337.5 227.36a12.5 12.5 0 1 1 -25 0 12.5 12.5 0 1 1 25 0z"/>
+ </g>
+</svg>

@@ -10,6 +10,8 @@ window.onLoad = function () {
   const saveState = {};
   saveState.tiles = generateRandomValueArray(BoardData.tiles);
   saveState.pins = generateRandomValueArray(BoardData.pins);
+
+  console.log(saveState);
   for (let i = 0; i < saveState.tiles.length; i++) {
     // The desert never has a value pin on it
     if (saveState.tiles[i] == "desert") {
@@ -19,6 +21,35 @@ window.onLoad = function () {
 
   const state = initState(saveState);
   const graphicsState = initGraphicsState(state);
+
+  const dice = [new Die("die1"), new Die("die2")];
+  const dieObserver = {
+    onEvent(eventName, target) {
+      let value = 0;
+      for (const die of dice) {
+        value += die.roll();
+      }
+      for (const hex of state.hexes) {
+        hex.setState({ selected: false });
+      }
+      for (const vertex of state.vertexes) {
+        vertex.setState({ selected: false });
+      }
+
+      for (const hex of state.hexes) {
+        if (hex.value === value) {
+          hex.setState({ selected: true });
+          for (const vertex of hex.vertexes) {
+            vertex.setState({ selected: true });
+          }
+        }
+      }
+    },
+  };
+
+  for (const die of dice) {
+    die.addObserver(dieObserver);
+  }
 
   const stateObserver = {
     onEvent(event, state) {
@@ -261,21 +292,59 @@ class Element {
   }
 }
 
+class Die extends Element {
+  constructor(id) {
+    super();
+    this.el = document.querySelector("#" + id);
+    this.value = 1;
+    this.update();
+    this.el.addEventListener("click", () => {
+      this.fire("click");
+    });
+  }
+
+  roll() {
+    this.value = Math.floor(Math.random() * 6) + 1;
+    this.update();
+    return this.value;
+  }
+
+  update() {
+    const { el, value } = this;
+    for (let i = 1; i <= 6; i++) {
+      el.classList.remove(`die-${i}`);
+    }
+    el.classList.add(`die-${value}`);
+  }
+}
+
 class Vertex extends Element {
   constructor(hexes, text) {
     super();
 
     this.hexes = hexes;
     this.text = text;
-    this.setState({ selected: false });
+    this.setState({ selected: false, player: null });
+
+    for (const hex of hexes) {
+      hex.addVertex(this);
+    }
   }
 
   fire(eventName, data) {
     super.fire(eventName, data);
+
     if (eventName === "click") {
-      this.setState({ selected: !this.state.selected });
-      // handled
-      return true;
+      if (this.state.player === null) {
+        this.setState({ player: 1 });
+      } else {
+        let newPlayer = this.state.player + 1;
+        if (newPlayer === 7) {
+          newPlayer = null;
+        }
+        this.setState({ player: newPlayer });
+      }
+      console.log(this.state);
     }
   }
 }
@@ -300,15 +369,6 @@ class Edge extends Element {
       }
     }
   }
-
-  fire(eventName, data) {
-    super.fire(eventName, data);
-    if (eventName === "click") {
-      this.setState({ selected: !this.state.selected });
-      // handled
-      return true;
-    }
-  }
 }
 
 class Hex extends Element {
@@ -318,17 +378,13 @@ class Hex extends Element {
     this.x = x;
     this.y = y;
     this.type = type;
-    this.value = value;
+    this.value = value !== "" ? Number(value) : "";
     this.isEdge = isEdge;
     this.setState({ selected: false });
+    this.vertexes = [];
   }
 
-  fire(eventName, data) {
-    super.fire(eventName, data);
-    if (eventName === "click" && !this.isEdge) {
-      this.setState({ selected: !this.state.selected });
-      // handled
-      return true;
-    }
+  addVertex(vertex) {
+    this.vertexes.push(vertex);
   }
 }

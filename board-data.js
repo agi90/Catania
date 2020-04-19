@@ -216,6 +216,15 @@ const RESOURCE_TYPE_COLOR = {
   edge: "#38a7c7",
 };
 
+const PLAYER_COLORS = {
+  "1": "#e6251f",
+  "2": "#00ba3e",
+  "3": "#ff7d00",
+  "4": "#edeee0",
+  "5": "#0086a2",
+  "6": "#48473f",
+};
+
 export const BoardData = {
   get hexes() {
     return HEXES;
@@ -237,5 +246,8 @@ export const BoardData = {
   },
   get resourceTypeColor() {
     return RESOURCE_TYPE_COLOR;
+  },
+  get playerColors() {
+    return PLAYER_COLORS;
   },
 };

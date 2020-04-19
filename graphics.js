@@ -154,22 +154,18 @@ class Vertex {
   }
 
   draw(context) {
-    if (!this.vertex.state.selected) {
+    const { selected, player } = this.vertex.state;
+    if (!selected && !player) {
       return;
     }
 
     const { x, y, size, radius, vertex } = this;
 
-    context.fillStyle = "#000";
+    context.fillStyle = player ? BoardData.playerColors[player] : "#000";
     context.beginPath();
     context.arc(x, y, radius, 0, 2 * Math.PI);
     context.fill();
-
-    context.font = size / 5 + "px serif";
-    context.fillStyle = "#FFF";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(vertex.text, x, y);
+    context.stroke();
   }
 }
 
