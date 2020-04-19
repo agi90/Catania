@@ -1,5 +1,6 @@
 import { BoardData } from "./board-data.js";
 import { HexGraphics, VertexGraphics, EdgeGraphics } from "./graphics.js";
+import { Game, Vertex, Edge, Hex, Die, Element } from "./game.js";
 
 const FORWARD_MOUSE_EVENTS = ["mouseup", "mousedown", "click", "mousemove"];
 
@@ -11,7 +12,6 @@ window.onLoad = function () {
   saveState.tiles = generateRandomValueArray(BoardData.tiles);
   saveState.pins = generateRandomValueArray(BoardData.pins);
 
-  console.log(saveState);
   for (let i = 0; i < saveState.tiles.length; i++) {
     // The desert never has a value pin on it
     if (saveState.tiles[i] == "desert") {
@@ -20,6 +20,7 @@ window.onLoad = function () {
   }
 
   const state = initState(saveState);
+  console.log(state);
   const graphicsState = initGraphicsState(state);
 
   const dice = [new Die("die1"), new Die("die2")];
@@ -136,7 +137,9 @@ function initState(saveState) {
     edges.push(edge);
   }
 
-  return { hexes, vertexes, edges };
+  const game = new Game(4, vertexes, edges);
+
+  return { hexes, vertexes, edges, game };
 }
 
 function initGraphicsState(state) {
@@ -257,134 +260,4 @@ function generateRandomValueArray(descriptor) {
   }
   shuffleArray(values);
   return values;
-}
-
-class Element {
-  constructor() {
-    this._observers = [];
-    this._state = {};
-  }
-
-  addObserver(observer) {
-    this._observers.push(observer);
-  }
-
-  fire(eventName, data = null) {
-    let handled = false;
-    for (const observer of this._observers) {
-      handled = handled || observer.onEvent(eventName, this, data);
-    }
-    return handled;
-  }
-
-  setState(values) {
-    const { _state, _observers } = this;
-
-    for (const [key, value] of Object.entries(values)) {
-      _state[key] = value;
-    }
-
-    this.fire("statechange", _state);
-  }
-
-  get state() {
-    return this._state;
-  }
-}
-
-class Die extends Element {
-  constructor(id) {
-    super();
-    this.el = document.querySelector("#" + id);
-    this.value = 1;
-    this.update();
-    this.el.addEventListener("click", () => {
-      this.fire("click");
-    });
-  }
-
-  roll() {
-    this.value = Math.floor(Math.random() * 6) + 1;
-    this.update();
-    return this.value;
-  }
-
-  update() {
-    const { el, value } = this;
-    for (let i = 1; i <= 6; i++) {
-      el.classList.remove(`die-${i}`);
-    }
-    el.classList.add(`die-${value}`);
-  }
-}
-
-class Vertex extends Element {
-  constructor(hexes, text) {
-    super();
-
-    this.hexes = hexes;
-    this.text = text;
-    this.setState({ selected: false, player: null });
-
-    for (const hex of hexes) {
-      hex.addVertex(this);
-    }
-  }
-
-  fire(eventName, data) {
-    super.fire(eventName, data);
-
-    if (eventName === "click") {
-      if (this.state.player === null) {
-        this.setState({ player: 1 });
-      } else {
-        let newPlayer = this.state.player + 1;
-        if (newPlayer === 7) {
-          newPlayer = null;
-        }
-        this.setState({ player: newPlayer });
-      }
-      console.log(this.state);
-    }
-  }
-}
-
-class Edge extends Element {
-  constructor(vertexes, text) {
-    super();
-
-    this.vertexes = vertexes;
-    this.text = text;
-    this.setState({ selected: false });
-
-    // compute common hexes
-    const setA = new Set(vertexes[0].hexes);
-    const setB = new Set(vertexes[1].hexes);
-
-    this.hexes = [];
-
-    for (const hex of setA) {
-      if (setB.has(hex)) {
-        this.hexes.push(hex);
-      }
-    }
-  }
-}
-
-class Hex extends Element {
-  constructor(x, y, type, value, isEdge) {
-    super();
-
-    this.x = x;
-    this.y = y;
-    this.type = type;
-    this.value = value !== "" ? Number(value) : "";
-    this.isEdge = isEdge;
-    this.setState({ selected: false });
-    this.vertexes = [];
-  }
-
-  addVertex(vertex) {
-    this.vertexes.push(vertex);
-  }
 }

@@ -66,7 +66,8 @@ class Edge {
   }
 
   draw(context) {
-    if (!this.edge.state.selected) {
+    const { selected, player } = this.edge.state;
+    if (!selected && !player) {
       return;
     }
 
@@ -84,7 +85,7 @@ class Edge {
       edge,
     } = this;
 
-    context.fillStyle = "#F00";
+    context.fillStyle = player ? BoardData.playerColors[player] : "#000";
     context.beginPath();
 
     if (xGap) {
@@ -98,12 +99,7 @@ class Edge {
 
     context.closePath();
     context.fill();
-
-    context.font = size / 5 + "px serif";
-    context.fillStyle = "#FFF";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(edge.text, x, y);
+    context.stroke();
   }
 }
 
