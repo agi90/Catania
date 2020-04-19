@@ -190,6 +190,13 @@ class Game {
       this.currentPlayer.setupVillage = target;
       if (this.step === "setup_village") {
         this.nextTurn();
+      } else {
+        const { cards } = this.currentPlayer;
+        cards.wood -= 1;
+        cards.brick -= 1;
+        cards.wheat -= 1;
+        cards.sheep -= 1;
+        this.selectBuildable();
       }
       return true;
     }
@@ -197,6 +204,11 @@ class Game {
       target.setState({ player: this.currentPlayer.id });
       if (this.step === "setup_road") {
         this.nextTurn();
+      } else {
+        const { cards } = this.currentPlayer;
+        cards.wood -= 1;
+        cards.brick -= 1;
+        this.selectBuildable();
       }
       return true;
     }
@@ -251,7 +263,6 @@ class Game {
         this.nextNonSetupTurn();
         break;
     }
-    this.unselectAll();
     this.selectBuildable();
   }
 
@@ -266,6 +277,7 @@ class Game {
   }
 
   selectBuildable() {
+    this.unselectAll();
     const { edges, vertexes } = this;
     for (const edge of edges) {
       if (this.canBuildRoad(edge)) {
