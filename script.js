@@ -115,11 +115,24 @@ function initState(saveState) {
       if (eventName === "statechange") {
         const { state } = game;
         const { currentPlayer } = game.state;
-        const { cards } = game.players[currentPlayer - 1].state;
+        const { cards, roads, villages, cities } = game.players[
+          currentPlayer - 1
+        ].state;
         gameUi.innerHTML = `
           <span class=currentPlayer>
               CurrentPlayer: ${game.state.currentPlayer}
           </span>
+          <div class=pieces>
+            <span class=piece>
+              Roads: ${roads}
+            </span>
+            <span class=piece>
+              Villages: ${villages}
+            </span>
+            <span class=piece>
+              Cities: ${cities}
+            </span>
+          </div>
           <div class=cards>
             <span class=card>
               Wood: ${cards.wood}

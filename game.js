@@ -150,7 +150,7 @@ class Player extends Element {
     for (const resource of BoardData.resources) {
       cards[resource] = 0;
     }
-    this.setState({ cards });
+    this.setState({ cards, roads: 15, villages: 5, cities: 4 });
   }
 }
 
@@ -170,7 +170,9 @@ class Game extends Element {
       setupTurn: 0,
       turn: null,
     });
+
     this.dice = [new Die("die1"), new Die("die2")];
+
     const self = this;
     this.dice[0].addObserver({
       onEvent() {
@@ -201,10 +203,14 @@ class Game extends Element {
   }
 
   buildVillage(vertex) {
-    vertex.setState({ player: this.currentPlayer.id });
+    const { currentPlayer } = this;
+    const { state } = currentPlayer;
+    vertex.setState({ player: currentPlayer.id });
+    currentPlayer.setState({ villages: state.villages - 1 });
+
     if (this.state.step !== "setup_village") {
-      const { wood, brick, wheat, sheep } = this.currentPlayer.state.cards;
-      this.currentPlayer.setState({
+      const { wood, brick, wheat, sheep } = state.cards;
+      currentPlayer.setState({
         cards: {
           wood: wood - 1,
           brick: brick - 1,
@@ -216,10 +222,14 @@ class Game extends Element {
   }
 
   buildRoad(edge) {
-    edge.setState({ player: this.currentPlayer.id });
+    const { currentPlayer } = this;
+    const { state } = currentPlayer;
+    edge.setState({ player: currentPlayer.id });
+    currentPlayer.setState({ roads: state.roads - 1 });
+
     if (this.state.step !== "setup_road") {
-      const { wood, brick } = this.currentPlayer.state.cards;
-      this.currentPlayer.setState({
+      const { wood, brick } = state.cards;
+      currentPlayer.setState({
         cards: {
           wood: wood - 1,
           brick: brick - 1,
@@ -363,8 +373,13 @@ class Game extends Element {
         return false;
       case "turn":
         const { currentPlayer } = this;
-        const { wood, brick } = currentPlayer.state.cards;
-        // First, check if player has enough resources
+        const { state } = currentPlayer;
+        if (state.roads <= 0) {
+          // No roads left
+          return false;
+        }
+        const { wood, brick } = state.cards;
+        // Check if player has enough resources
         if (wood < 1 || brick < 1) {
           return false;
         }
@@ -400,7 +415,12 @@ class Game extends Element {
         return false;
       case "turn":
         const { currentPlayer } = this;
-        const { wood, brick, sheep, wheat } = currentPlayer.state.cards;
+        const { state } = currentPlayer;
+        if (state.villages <= 0) {
+          // No villages left
+          return;
+        }
+        const { wood, brick, sheep, wheat } = state.cards;
         // First, check if player has enough resources
         if (wood < 1 || brick < 1 || sheep < 1 || wheat < 1) {
           return false;
