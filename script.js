@@ -109,6 +109,43 @@ function initState(saveState) {
   }
 
   const game = new Game(2, vertexes, edges, hexes);
+  const gameUi = document.querySelector("#game-state");
+  const gameObserver = {
+    onEvent(eventName, target, data) {
+      if (eventName === "statechange") {
+        const { state } = game;
+        const { currentPlayer } = game.state;
+        const { cards } = game.players[currentPlayer - 1].state;
+        gameUi.innerHTML = `
+          <span class=currentPlayer>
+              CurrentPlayer: ${game.state.currentPlayer}
+          </span>
+          <div class=cards>
+            <span class=card>
+              Wood: ${cards.wood}
+            </span>
+            <span class=card>
+              Brick: ${cards.brick}
+            </span>
+            <span class=card>
+              Wheat: ${cards.wheat}
+            </span>
+            <span class=card>
+              Ore: ${cards.ore}
+            </span>
+            <span class=card>
+              Sheep: ${cards.sheep}
+            </span>
+          </div>
+        `;
+      }
+    },
+  };
+
+  game.addObserver(gameObserver);
+  for (const player of game.players) {
+    player.addObserver(gameObserver);
+  }
 
   return { hexes, vertexes, edges, game };
 }

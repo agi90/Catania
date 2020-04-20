@@ -19,13 +19,22 @@ class Element {
   }
 
   setState(values) {
-    const { _state, _observers } = this;
-
-    for (const [key, value] of Object.entries(values)) {
-      _state[key] = value;
-    }
-
+    const { _state } = this;
+    this.setInnerState(_state, values);
     this.fire("statechange", _state);
+  }
+
+  setInnerState(state, values) {
+    for (const [key, value] of Object.entries(values)) {
+      if (typeof value == "object" && value) {
+        if (!(key in state)) {
+          state[key] = Array.isArray(value) ? [] : {};
+        }
+        this.setInnerState(state[key], value);
+      } else {
+        state[key] = value;
+      }
+    }
   }
 
   get state() {
@@ -131,34 +140,41 @@ const SETUP_PLAYER_TURNS = {
   "6": [0, 1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 0],
 };
 
-class Player {
+class Player extends Element {
   constructor(id) {
+    super();
     this.id = id;
     this.setupVillage = null;
 
-    this.cards = {};
+    const cards = {};
     for (const resource of BoardData.resources) {
-      this.cards[resource] = 0;
+      cards[resource] = 0;
     }
-    console.log(this);
+    this.setState({ cards });
   }
 }
 
-class Game {
+class Game extends Element {
   constructor(players, vertexes, edges, hexes) {
+    super();
     this.players = [];
     for (let i = 1; i <= players; i++) {
       this.players.push(new Player(i));
     }
-    this.step = "setup_village";
-    this._firstPlayer = Math.floor(Math.random() * players) + 1;
-    this._setupTurn = 0;
-    this._turn = null;
+    const firstPlayer = Math.floor(Math.random() * players) + 1;
+    this.setState({
+      step: "setup_village",
+      players_number: players,
+      firstPlayer,
+      currentPlayer: firstPlayer,
+      setupTurn: 0,
+      turn: null,
+    });
     this.dice = [new Die("die1"), new Die("die2")];
     const self = this;
     this.dice[0].addObserver({
       onEvent() {
-        if (self.step === "turn") {
+        if (self.state.step === "turn") {
           self.nextTurn();
         }
       },
@@ -184,30 +200,53 @@ class Game {
     }
   }
 
+  buildVillage(vertex) {
+    vertex.setState({ player: this.currentPlayer.id });
+    if (this.state.step !== "setup_village") {
+      const { wood, brick, wheat, sheep } = this.currentPlayer.state.cards;
+      this.currentPlayer.setState({
+        cards: {
+          wood: wood - 1,
+          brick: brick - 1,
+          wheat: wheat - 1,
+          sheep: sheep - 1,
+        },
+      });
+    }
+  }
+
+  buildRoad(edge) {
+    edge.setState({ player: this.currentPlayer.id });
+    if (this.state.step !== "setup_road") {
+      const { wood, brick } = this.currentPlayer.state.cards;
+      this.currentPlayer.setState({
+        cards: {
+          wood: wood - 1,
+          brick: brick - 1,
+        },
+      });
+    }
+  }
+
   onClick(target) {
     if (target instanceof Vertex && this.canBuildVillage(target)) {
-      target.setState({ player: this.currentPlayer.id });
-      this.currentPlayer.setupVillage = target;
-      if (this.step === "setup_village") {
+      this.buildVillage(target);
+      if (this.state.step === "setup_village") {
+        this.currentPlayer.setupVillage = target;
         this.nextTurn();
       } else {
-        const { cards } = this.currentPlayer;
-        cards.wood -= 1;
-        cards.brick -= 1;
-        cards.wheat -= 1;
-        cards.sheep -= 1;
+        console.log(this.currentPlayer);
         this.selectBuildable();
       }
       return true;
     }
     if (target instanceof Edge && this.canBuildRoad(target)) {
-      target.setState({ player: this.currentPlayer.id });
-      if (this.step === "setup_road") {
+      this.buildRoad(target);
+      if (this.state.step === "setup_road") {
+        this.currentPlayer.setupVillage = null;
         this.nextTurn();
       } else {
-        const { cards } = this.currentPlayer;
-        cards.wood -= 1;
-        cards.brick -= 1;
+        console.log(this.currentPlayer);
         this.selectBuildable();
       }
       return true;
@@ -229,13 +268,16 @@ class Game {
       }
       for (const vertex of hex.vertexes) {
         // TODO: handle cities
-        const { player } = vertex.state;
-        if (player !== null) {
-          this.players[player - 1].cards[hex.type] += 1;
+        const { player: playerId } = vertex.state;
+        if (playerId !== null) {
+          const player = this.players[playerId - 1];
+          const { cards } = player.state;
+          cards[hex.type] += 1;
+          player.setState({ cards });
         }
       }
     }
-    console.log(this.currentPlayer.cards);
+    console.log(this.currentPlayer.state.cards);
   }
 
   handleRobber() {
@@ -243,27 +285,30 @@ class Game {
   }
 
   nextTurn() {
-    const { step } = this;
+    const { step } = this.state;
     switch (step) {
       case "setup_village":
-        this.step = "setup_road";
+        this.setState({ step: "setup_road" });
         break;
       case "setup_road":
-        this.step = "setup_village";
-        this._setupTurn += 1;
-        if (this._setupTurn == SETUP_PLAYER_TURNS[this.players.length].length) {
-          this.step = "turn";
-          this._setupTurn = null;
-          this._turn = 0;
+        this.setState({
+          step: "setup_village",
+          setupTurn: this.state.setupTurn + 1,
+        });
+        if (
+          this.state.setupTurn == SETUP_PLAYER_TURNS[this.players.length].length
+        ) {
+          this.setState({ step: "turn", setupTurn: null, turn: 0 });
           this.nextNonSetupTurn();
         }
         break;
       case "turn":
-        this._turn += 1;
+        this.setState({ turn: this.state.turn + 1 });
         this.nextNonSetupTurn();
         break;
     }
     this.selectBuildable();
+    this.setState({ currentPlayer: this.currentPlayer.id });
   }
 
   unselectAll() {
@@ -292,20 +337,21 @@ class Game {
   }
 
   get currentPlayer() {
-    const { step, _setupTurn, players, _firstPlayer, _turn } = this;
+    const { state, players } = this;
+    const { step, firstPlayer, setupTurn, turn } = state;
     if (step === "setup_village" || step === "setup_road") {
-      const player_offset = SETUP_PLAYER_TURNS[players.length][_setupTurn];
-      let player = _firstPlayer + player_offset;
+      const player_offset = SETUP_PLAYER_TURNS[players.length][setupTurn];
+      let player = firstPlayer + player_offset;
       if (player > players.length) {
         player -= players.length;
       }
       return this.players[player - 1];
     }
-    return players[(_turn + _firstPlayer - 1) % players.length];
+    return players[(turn + firstPlayer - 1) % players.length];
   }
 
   canBuildRoad(edge) {
-    switch (this.step) {
+    switch (this.state.step) {
       case "setup_village":
         return false;
       case "setup_road":
@@ -317,7 +363,7 @@ class Game {
         return false;
       case "turn":
         const { currentPlayer } = this;
-        const { wood, brick } = currentPlayer.cards;
+        const { wood, brick } = currentPlayer.state.cards;
         // First, check if player has enough resources
         if (wood < 1 || brick < 1) {
           return false;
@@ -341,7 +387,7 @@ class Game {
   }
 
   canBuildVillage(vertex) {
-    switch (this.step) {
+    switch (this.state.step) {
       case "setup_village":
         // Can only build if no adiajent vertex has a village
         for (const sibling of vertex.siblings) {
@@ -354,7 +400,7 @@ class Game {
         return false;
       case "turn":
         const { currentPlayer } = this;
-        const { wood, brick, sheep, wheat } = currentPlayer.cards;
+        const { wood, brick, sheep, wheat } = currentPlayer.state.cards;
         // First, check if player has enough resources
         if (wood < 1 || brick < 1 || sheep < 1 || wheat < 1) {
           return false;
@@ -364,11 +410,11 @@ class Game {
           if (sibling.state.player !== null) {
             return false;
           }
-          // Village needs to be next to own road
-          for (const edge of vertex.edges) {
-            if (edge.state.player === currentPlayer.id) {
-              return true;
-            }
+        }
+        // Village needs to be next to own road
+        for (const edge of vertex.edges) {
+          if (edge.state.player === currentPlayer.id) {
+            return true;
           }
         }
         return false;
