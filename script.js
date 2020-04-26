@@ -45,7 +45,10 @@ window.onLoad = function () {
   window.onresize = () => {
     // XXX lots of magic numbers, mainly to make the board centered and of the right size
     const canvasWidth =
-      Math.min(canvas.parentElement.clientWidth, canvas.parentElement.clientHeight) * 0.9;
+      Math.min(
+        canvas.parentElement.clientWidth,
+        canvas.parentElement.clientHeight
+      ) * 0.9;
     console.log(canvasWidth);
     const size = canvasWidth / 12.23;
     const canvasHeight = canvasWidth * 0.91;
@@ -119,7 +122,7 @@ function initState(saveState) {
         const { state: playerState } = game.players[currentPlayer - 1];
         let html = `<div class="player-${game.state.currentPlayer}">
           <div class="current-player "></div>
-          <div class=cards>`
+          <div class=cards>`;
         for (let type of BoardData.resources) {
           for (let i = 0; i < playerState.cards[type] || 0; i++) {
             html += `<div class="card ${type}"></div>`;

@@ -162,24 +162,23 @@ class Game extends Element {
       this.players.push(new Player(i));
     }
     const firstPlayer = Math.floor(Math.random() * players) + 1;
+    this.dice = [new Die("die1"), new Die("die2")];
+    for (let die of this.dice) {
+      this.addObserver(die);
+    }
+
+    const actionButton = new ActionButton("action-button");
+    this.addObserver(actionButton);
+    actionButton.addObserver(this);
+
     this.setState({
       step: "setup_village",
+      action: "setup_village",
       players_number: players,
       firstPlayer,
       currentPlayer: firstPlayer,
       setupTurn: 0,
       turn: null,
-    });
-
-    this.dice = [new Die("die1"), new Die("die2")];
-
-    const self = this;
-    this.dice[0].addObserver({
-      onEvent() {
-        if (self.state.step === "turn") {
-          self.nextTurn();
-        }
-      },
     });
 
     for (const vertex of vertexes) {
@@ -280,10 +279,24 @@ class Game extends Element {
       this.onBuildRoad(target);
       return true;
     }
+    if (target instanceof ActionButton) {
+      this.doAction();
+    }
   }
 
-  nextNonSetupTurn() {
-    console.log(this.currentPlayer);
+  doAction() {
+    const { action } = this.state;
+    switch (action) {
+      case "next_turn":
+        this.nextTurn();
+        return;
+      case "roll_dice":
+        this.throwDice();
+        return;
+    }
+  }
+
+  throwDice() {
     let diceValue = 0;
     for (const die of this.dice) {
       diceValue += die.roll();
@@ -306,7 +319,7 @@ class Game extends Element {
         }
       }
     }
-    console.log(this.currentPlayer.state.cards);
+    this.setState({ action: "next_turn" });
   }
 
   handleRobber() {
@@ -317,23 +330,27 @@ class Game extends Element {
     const { step } = this.state;
     switch (step) {
       case "setup_village":
-        this.setState({ step: "setup_road" });
+        this.setState({ step: "setup_road", action: "setup_road" });
         break;
       case "setup_road":
         this.setState({
           step: "setup_village",
+          action: "setup_village",
           setupTurn: this.state.setupTurn + 1,
         });
         if (
           this.state.setupTurn == SETUP_PLAYER_TURNS[this.players.length].length
         ) {
-          this.setState({ step: "turn", setupTurn: null, turn: 0 });
-          this.nextNonSetupTurn();
+          this.setState({
+            step: "turn",
+            setupTurn: null,
+            turn: 0,
+            action: "roll_dice",
+          });
         }
         break;
       case "turn":
-        this.setState({ turn: this.state.turn + 1 });
-        this.nextNonSetupTurn();
+        this.setState({ turn: this.state.turn + 1, action: "roll_dice" });
         break;
     }
     this.selectBuildable();
@@ -461,6 +478,62 @@ class Game extends Element {
   }
 }
 
+const ACTIONS = {
+  next_turn: {
+    text: "Next Turn",
+  },
+  roll_dice: {
+    text: "Roll Dice",
+  },
+  setup_village: {
+    text: "Place Village",
+    disabled: true,
+  },
+  setup_road: {
+    text: "Place Road",
+    disabled: true,
+  },
+};
+
+class ActionButton extends Element {
+  constructor(id) {
+    super();
+    this.id = id;
+    this.el = document.querySelector("#" + id);
+    this.el.addEventListener("click", () => {
+      this.fire("click");
+    });
+  }
+
+  onEvent(eventName, target, data) {
+    if (eventName === "statechange") {
+      const { action } = data;
+      if (action === undefined) {
+        return;
+      } else if (action === null) {
+        this.el.style.display = "none";
+      } else {
+        this.onAction(action);
+      }
+    }
+  }
+
+  onAction(action) {
+    const data = ACTIONS[action];
+    if (!data) {
+      throw `Unknown action ${action}`;
+    }
+
+    this.el.innerHTML = data.text;
+    this.el.disabled = "disabled" in data ? data.disabled : false;
+    this.el.style.display = "initial";
+  }
+
+  setEnabled(enabled) {
+    this.el.disabled = !enabled;
+  }
+}
+
 class Die extends Element {
   constructor(id) {
     super();
@@ -470,6 +543,23 @@ class Die extends Element {
     this.el.addEventListener("click", () => {
       this.fire("click");
     });
+  }
+
+  onEvent(eventName, target, data) {
+    if (eventName === "statechange") {
+      const { action, step } = data;
+      if (
+        step === "setup_village" ||
+        step === "setup_road" ||
+        action === "roll_dice"
+      ) {
+        this.el.style.opacity = "0";
+        this.el.style.transition = "";
+      } else {
+        this.el.style.opacity = "1";
+        this.el.style.transition = "opacity ease-out 300ms";
+      }
+    }
   }
 
   roll() {
