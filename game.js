@@ -238,27 +238,46 @@ class Game extends Element {
     }
   }
 
+  onBuildVillage(vertex) {
+    this.buildVillage(vertex);
+    if (this.state.step === "setup_village") {
+      const { currentPlayer, players, state } = this;
+      currentPlayer.setupVillage = vertex;
+
+      // Players get a card for each hex adjacent to their village on the
+      // second setup turn.
+      if (state.setupTurn >= players.length) {
+        const { cards } = currentPlayer.state;
+        for (const hex of vertex.hexes) {
+          cards[hex.type] += 1;
+        }
+        currentPlayer.setState({ cards });
+      }
+
+      // Automatically advance to the next turn since there's nothing else the
+      // user can do in this stage
+      this.nextTurn();
+    }
+  }
+
+  onBuildRoad(edge) {
+    this.buildRoad(edge);
+    if (this.state.step === "setup_road") {
+      this.currentPlayer.setupVillage = null;
+
+      // Automatically advance to the next turn since there's nothing else the
+      // user can do in this stage
+      this.nextTurn();
+    }
+  }
+
   onClick(target) {
     if (target instanceof Vertex && this.canBuildVillage(target)) {
-      this.buildVillage(target);
-      if (this.state.step === "setup_village") {
-        this.currentPlayer.setupVillage = target;
-        this.nextTurn();
-      } else {
-        console.log(this.currentPlayer);
-        this.selectBuildable();
-      }
+      this.onBuildVillage(target);
       return true;
     }
     if (target instanceof Edge && this.canBuildRoad(target)) {
-      this.buildRoad(target);
-      if (this.state.step === "setup_road") {
-        this.currentPlayer.setupVillage = null;
-        this.nextTurn();
-      } else {
-        console.log(this.currentPlayer);
-        this.selectBuildable();
-      }
+      this.onBuildRoad(target);
       return true;
     }
   }

@@ -1,52 +1,239 @@
+html, body {
+    height: 100%;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    min-width: 500px;
+    min-height: 650px;
+}
 #header {
     width: 100%;
-    height: 80px;
+    height: 0;
     background: #ccc;
 }
 
 #footer {
-    width: 100%;
-    height: 80px;
+    width: calc(100% - 20px);
     background: #ddd;
+    overflow: hidden;
+    padding: 10px;
 }
 
 #container {
     background: black;
-    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    height: calc(100% - 254px);
+}
+
+#game {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.piece.roads:first-child {
+    margin-left: 10px;
+}
+
+.piece.roads {
+    background: black;
+    width: 10px;
+    height: 20px;
+    float: left;
+    margin-left: 5px;
+}
+
+.piece.villages {
+    width: 20px;
+    height: 20px;
+    background: black;
+    float: left;
+    margin-left: 5px;
+    border-radius: 50%;
+}
+
+.piece.cities {
+    border-bottom: 20px solid black;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    height: 0;
+    width: 15px;
+    margin-left: 5px;
+    float: left;
+}
+
+.current-player {
+    height: 50px;
+    width: calc(100% - 126px);
+    float: left;
+    margin-left: 2px;
+    border-radius: 5px;
+}
+
+.player-1 .current-player,
+.player-1 .piece.roads,
+.player-1 .piece.villages
+{
+    background-color: #e6251f;
+}
+.player-2 .current-player,
+.player-2 .piece.roads,
+.player-2 .piece.villages
+{
+    background-color: #00ba3e;
+}
+.player-3 .current-player,
+.player-3 .piece.roads,
+.player-3 .piece.villages
+{
+    background-color: #ff7d00;
+}
+.player-4 .current-player,
+.player-4 .piece.roads,
+.player-4 .piece.villages
+{
+    background-color: #edeee0;
+}
+.player-5 .current-player,
+.player-5 .piece.roads,
+.player-5 .piece.villages
+{
+    background-color: #0086a2;
+}
+.player-6 .current-player,
+.player-6 .piece.roads,
+.player-6 .piece.villages
+{
+    background-color: #48473f;
+}
+
+.player-1 .piece.cities {
+    border-bottom-color: #e6251f;
+}
+.player-2 .piece.cities
+{
+    border-bottom-color: #00ba3e;
+}
+.player-3 .piece.cities
+{
+    border-bottom-color: #ff7d00;
+}
+.player-4 .piece.cities
+{
+    border-bottom-color: #edeee0;
+}
+.player-5 .piece.cities
+{
+    border-bottom-color: #0086a2;
+}
+.player-6 .piece.cities
+{
+    border-bottom-color: #48473f;
+}
+
+.card:hover {
+    margin-right: 0px;
+    margin-left: 10px;
+}
+
+.card:hover:first-child {
+    margin-left: 0px;
+}
+
+.cards {
+    border: 1px solid grey;
+    padding: 10px;
+    overflow: hidden;
+    margin: 10px;
+    min-height: 122px;
+    width: calc(100% - 38px);
+    background: white;
+    border-radius: 3px;
+}
+
+.card {
+    width: 80px;
+    height: 120px;
+    margin-right: -60px;
+    float: left;
+    box-shadow: 0px 0px 0px 6px #eec279 inset;
+    border: 1px solid #a82;
+    transition: margin 150ms ease-in-out;
+    transition-delay: 100ms;
+    border-radius: 5px;
+    background-size: contain;
+}
+
+.card.wood {
+    background-color: #1c4f1b;
+    background-image: url("artwork/wood.jpg");
+}
+.card.ore {
+    background-color: #968d7e;
+    background-image: url("artwork/ore.jpg");
+}
+.card.sheep {
+    background-color: #99b210;
+    background-image: url("artwork/sheep.jpg");
+}
+.card.wheat {
+    background-color: #e6b82f;
+    background-image: url("artwork/wheat.jpg");
+}
+.card.brick {
+    background-color: #b7673c;
+    background-image: url("artwork/brick.jpg");
 }
 
 #dice-box {
-    width: 100px;
+    position: relative;
+    overflow: hidden;
+    float: left;
+    margin-left: 10px;
+    margin-bottom: 10px;
 }
 
 .die {
     width: 50px;
     height: 50px;
     background: url("assets/die.svg");
-    background-size: 370px 300px;
-    background-position-y: -125px;
+    background-size: 354px 300px;
+    background-position-y: -124.5px;
+    margin-right: 4px;
     float: left;
 }
 
 .die-1 {
-    background-position-x: 343px;
+    background-position-x: 329px;
 }
 .die-2 {
-    background-position-x: 291px;
+    background-position-x: 279px;
 }
 .die-3 {
-    background-position-x: 239px;
+    background-position-x: 229.5px;
 }
 .die-4 {
-    background-position-x: 187px;
+    background-position-x: 180px;
 }
 .die-5 {
-    background-position-x: 135px;
+    background-position-x: 130px;
 }
 .die-6 {
-    background-position-x: 83px;
+    background-position-x: 80.5px;
+}
+
+@media only screen and (min-width: 800px) {
+    #footer {
+        float: left;
+        width: 500px;
+        height: calc(100% - 20px);
+    }
+
+    #container {
+        float: left;
+        width: calc(100% - 520px);
+        height: 100%;
+    }
 }
