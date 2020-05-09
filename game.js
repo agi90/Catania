@@ -145,26 +145,38 @@ class Player extends Element {
     super();
     this.id = id;
     this.setupVillage = null;
+    this.cards = [];
     this.setState({ cards: [], roads: 15, villages: 5, cities: 4 });
   }
 
+  _updateCardState() {
+    const cards = this.cards.map((c) => c.type);
+    this.setState({ cards });
+  }
+
   drawCard(type) {
-    const { cards } = this.state;
+    const { cards } = this;
     const card = new Card(type);
     cards.push(card);
     this.fire("drawcard", card);
-    this.setState({ cards });
+    this._updateCardState();
   }
 
   hasCards(types) {
     const { cards } = this.state;
     for (const [type, number] of Object.entries(types)) {
-      const available = cards.filter((c) => c.type == type).length;
+      const available = cards.filter((c) => c == type).length;
       if (available < number) {
         return false;
       }
     }
     return true;
+  }
+
+  discardSelected() {
+    const { cards } = this;
+    this.cards = cards.filter((c) => !c.selected);
+    this._updateCardState();
   }
 
   useCards(types) {
@@ -177,7 +189,7 @@ class Player extends Element {
         );
       }
     }
-    this.setState({ cards });
+    this._updateCardState();
   }
 }
 
@@ -186,7 +198,9 @@ class Game extends Element {
     super();
     this.players = [];
     for (let i = 1; i <= players; i++) {
-      this.players.push(new Player(i));
+      const player = new Player(i);
+      player.addObserver(this);
+      this.players.push(player);
     }
     const firstPlayer = Math.floor(Math.random() * players) + 1;
     this.dice = [new Die("die1"), new Die("die2")];
@@ -225,6 +239,13 @@ class Game extends Element {
     switch (eventName) {
       case "click": {
         return this.onClick(target);
+      }
+      case "drawcard": {
+        const card = data;
+        data.addObserver(this);
+      }
+      case "toggle": {
+        this.onCardToggled(data);
       }
     }
   }
@@ -308,8 +329,7 @@ class Game extends Element {
         this.throwDice();
         return;
       case "robber_discard":
-        // TODO
-        this.nextTurn();
+        this.robberDiscard();
         return;
       case "robber_place":
         // TODO
@@ -350,6 +370,37 @@ class Game extends Element {
     });
     this.selectBuildable();
     this.setState({ currentPlayer: this.currentPlayer.id });
+    this.checkRobberCards();
+  }
+
+  onCardToggled(card) {
+    const { state, currentPlayer } = this;
+    const { action } = state;
+    if (action === "robber_select" || action === "robber_discard") {
+      const { cards } = currentPlayer;
+      const selected = cards.filter((c) => c.selected);
+      // Players must discard half their cards rounded down
+      if (selected.length === Math.floor(cards.length / 2)) {
+        this.setState({
+          action: "robber_discard",
+        });
+      } else {
+        this.setState({
+          action: "robber_select",
+        });
+      }
+    }
+  }
+
+  checkRobberCards() {
+    if (this.currentPlayer.state.cards.length < 8) {
+      // Player doesn't need to discard, let's advance
+      this.nextTurn();
+    } else {
+      this.setState({
+        action: "robber_select",
+      });
+    }
   }
 
   nextRobberTurn() {
@@ -366,7 +417,13 @@ class Game extends Element {
       });
     } else {
       this.setState({ robberTurn });
+      this.checkRobberCards();
     }
+  }
+
+  robberDiscard() {
+    this.currentPlayer.discardSelected();
+    this.nextTurn();
   }
 
   nextTurn() {
@@ -376,19 +433,19 @@ class Game extends Element {
         this.setState({ step: "setup_road", action: "setup_road" });
         break;
       case "setup_road":
-        this.setState({
-          step: "setup_village",
-          action: "setup_village",
-          setupTurn: this.state.setupTurn + 1,
-        });
-        if (
-          this.state.setupTurn == SETUP_PLAYER_TURNS[this.players.length].length
-        ) {
+        const nextTurn = this.state.setupTurn + 1;
+        if (nextTurn == SETUP_PLAYER_TURNS[this.players.length].length) {
           this.setState({
             step: "turn",
             setupTurn: null,
             turn: 0,
             action: "roll_dice",
+          });
+        } else {
+          this.setState({
+            step: "setup_village",
+            action: "setup_village",
+            setupTurn: nextTurn,
           });
         }
         break;
@@ -535,6 +592,10 @@ const ACTIONS = {
   roll_dice: {
     text: "Roll Dice",
   },
+  robber_select: {
+    text: "Select Cards",
+    disabled: true,
+  },
   robber_discard: {
     text: "Discard Cards",
   },
@@ -640,7 +701,7 @@ class Card extends Element {
     this.setState({ selected: null, selectable: true });
   }
 
-  get isSelected() {
+  get selected() {
     return this.state.selectable && this.state.selected;
   }
 
@@ -648,6 +709,7 @@ class Card extends Element {
     const { selectable, selected } = this.state;
     if (selectable) {
       this.setState({ selected: !selected });
+      this.fire("toggle", selected);
     }
   }
 }

@@ -118,22 +118,21 @@ function initState(saveState) {
     onEvent(eventName, target, data) {
       switch (eventName) {
         case "statechange": {
-          const { state } = game;
-          const { currentPlayer } = game.state;
-          const { state: playerState } = game.players[currentPlayer - 1];
-          let html = `<div class="player-${game.state.currentPlayer}">
+          const { currentPlayer } = game;
+          const { state } = currentPlayer;
+          let html = `<div class="player-${currentPlayer.id}">
             <div class="current-player "></div>
             <div class=cards>`;
-          const { cards } = playerState;
+          const { cards } = currentPlayer;
           for (const [id, card] of Object.entries(cards)) {
-            const selected = card.isSelected ? "selected" : "";
+            const selected = card.selected ? "selected" : "";
             html += `<div
                 data-card-id=${id}
                 class="card ${card.type} ${selected}"></div>`;
           }
           html += `</div><div class=pieces>`;
           for (let piece of ["roads", "villages", "cities"]) {
-            for (let i = 0; i < playerState[piece]; i++) {
+            for (let i = 0; i < state[piece]; i++) {
               html += `<div class="piece ${piece}"></div>`;
             }
           }
