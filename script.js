@@ -116,36 +116,43 @@ function initState(saveState) {
   const gameUi = document.querySelector("#game-state");
   const gameObserver = {
     onEvent(eventName, target, data) {
-      if (eventName === "statechange") {
-        const { state } = game;
-        const { currentPlayer } = game.state;
-        const { state: playerState } = game.players[currentPlayer - 1];
-        let html = `<div class="player-${game.state.currentPlayer}">
-          <div class="current-player "></div>
-          <div class=cards>`;
-        const { cards } = playerState;
-        for (const [id, card] of Object.entries(cards)) {
-          const selected = card.isSelected ? "selected" : "";
-          html += `<div
-              data-card-id=${id}
-              class="card ${card.type} ${selected}"></div>`;
-        }
-        html += `</div><div class=pieces>`;
-        for (let piece of ["roads", "villages", "cities"]) {
-          for (let i = 0; i < playerState[piece]; i++) {
-            html += `<div class="piece ${piece}"></div>`;
+      switch (eventName) {
+        case "statechange": {
+          const { state } = game;
+          const { currentPlayer } = game.state;
+          const { state: playerState } = game.players[currentPlayer - 1];
+          let html = `<div class="player-${game.state.currentPlayer}">
+            <div class="current-player "></div>
+            <div class=cards>`;
+          const { cards } = playerState;
+          for (const [id, card] of Object.entries(cards)) {
+            const selected = card.isSelected ? "selected" : "";
+            html += `<div
+                data-card-id=${id}
+                class="card ${card.type} ${selected}"></div>`;
           }
+          html += `</div><div class=pieces>`;
+          for (let piece of ["roads", "villages", "cities"]) {
+            for (let i = 0; i < playerState[piece]; i++) {
+              html += `<div class="piece ${piece}"></div>`;
+            }
+          }
+          html += `</div></div>`;
+          gameUi.innerHTML = html;
+          const onCardClick = (ev) => {
+            const id = ev.target.getAttribute("data-card-id");
+            cards[id].toggle();
+          };
+          document
+            .querySelectorAll(".card")
+            .forEach((c) => c.addEventListener("click", onCardClick));
+          break;
         }
-        html += `</div></div>`;
-        gameUi.innerHTML = html;
 
-        const onCardClick = (ev) => {
-          const id = ev.target.getAttribute("data-card-id");
-          cards[id].toggle();
-        };
-        document
-          .querySelectorAll(".cards")
-          .forEach((c) => c.addEventListener("click", onCardClick));
+        case "drawcard": {
+          const card = data;
+          card.addObserver(gameObserver);
+        }
       }
     },
   };

@@ -153,7 +153,6 @@ html, body {
 
 .card:hover {
     margin-right: 0px;
-    margin-left: 10px;
 }
 
 .card:hover:first-child {
@@ -171,9 +170,11 @@ html, body {
     border-radius: 3px;
 }
 
-.card {
+.card, .card.selected:after {
     width: 80px;
     height: 120px;
+}
+.card {
     margin-right: -60px;
     float: left;
     box-shadow: 0px 0px 0px 6px #eec279 inset;
@@ -183,7 +184,18 @@ html, body {
     border-radius: 5px;
     background-size: contain;
 }
+.card.selected:after {
+    position: relative;
+    content: '';
+    display: block;
 
+    border-radius: 5px;
+    background: rgba(255,255,255,.4);
+}
+.card.selected {
+    margin-right: 0px;
+    margin-left: 0px;
+}
 .card.wood {
     background-color: #1c4f1b;
     background-image: url("artwork/wood.jpg");

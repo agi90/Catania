@@ -150,7 +150,9 @@ class Player extends Element {
 
   drawCard(type) {
     const { cards } = this.state;
-    cards.push(new Card(type));
+    const card = new Card(type);
+    cards.push(card);
+    this.fire("drawcard", card);
     this.setState({ cards });
   }
 
