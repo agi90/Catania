@@ -110,7 +110,7 @@ class Hex extends Element {
     this.type = type;
     this.value = value !== "" ? Number(value) : "";
     this.isEdge = isEdge;
-    this.setState({ selected: false });
+    this.setState({ selected: false, hasRobber: false });
     this.vertexes = [];
   }
 
@@ -229,6 +229,12 @@ class Game extends Element {
     for (const edge of edges) {
       edge.addObserver(this);
     }
+    for (const hex of hexes) {
+      hex.addObserver(this);
+      if (hex.type === "desert") {
+        hex.setState({ hasRobber: true });
+      }
+    }
     this.edges = edges;
     this.vertexes = vertexes;
     this.hexes = hexes;
@@ -314,6 +320,10 @@ class Game extends Element {
       this.onBuildRoad(target);
       return true;
     }
+    if (target instanceof Hex) {
+      this.onHexClick(target);
+      return true;
+    }
     if (target instanceof ActionButton) {
       this.doAction();
     }
@@ -330,10 +340,6 @@ class Game extends Element {
         return;
       case "robber_discard":
         this.robberDiscard();
-        return;
-      case "robber_place":
-        // TODO
-        this.nextTurn();
         return;
     }
   }
@@ -389,6 +395,20 @@ class Game extends Element {
           action: "robber_select",
         });
       }
+    }
+  }
+
+  onHexClick(hex) {
+    if (this.state.step === "robber_place") {
+      if (hex.state.hasRobber) {
+        // Cannot place the robber in the same place
+        return;
+      }
+      this.hexes
+        .filter((h) => h.state.hasRobber)
+        .forEach((h) => h.setState({ hasRobber: false }));
+      hex.setState({ hasRobber: true });
+      this.nextTurn();
     }
   }
 
@@ -601,6 +621,7 @@ const ACTIONS = {
   },
   robber_place: {
     text: "Place Robber",
+    disabled: true,
   },
   setup_village: {
     text: "Place Village",

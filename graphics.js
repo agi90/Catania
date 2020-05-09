@@ -198,7 +198,8 @@ class Hex {
 
   draw(context) {
     const { poly, hex } = this;
-    poly.draw(context, hex.state.selected);
+    const { selected, hasRobber } = hex.state;
+    poly.draw(context, selected, hasRobber);
   }
 }
 
@@ -242,7 +243,7 @@ class HexPoly {
     return false;
   }
 
-  draw(context, mouseOver = false) {
+  draw(context, selected, hasRobber, mouseOver = false) {
     const { x, y, xGap, yGap, size, color, text, subText } = this;
 
     context.globalAlpha = mouseOver ? 0.5 : 1;
@@ -272,6 +273,9 @@ class HexPoly {
     if (text == "8" || text == "6") {
       fillColor = "#C44";
     }
+    if (hasRobber) {
+      fillColor = "#CCC";
+    }
 
     context.font = "bold " + size / 3 + "px verdana";
     context.fillStyle = fillColor;
@@ -282,6 +286,15 @@ class HexPoly {
     if (subText) {
       context.font = size / 4 + "px sans-serif";
       context.fillText(subText, x, y + size / 4);
+    }
+
+    if (hasRobber) {
+      context.fillStyle = "#444";
+      context.beginPath();
+      context.arc(x - size / 3, y + size / 2, size / 8, 0, 2 * Math.PI);
+      context.fill();
+      context.fillStyle = "#FFF";
+      context.stroke();
     }
   }
 }
