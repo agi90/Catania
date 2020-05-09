@@ -145,12 +145,37 @@ class Player extends Element {
     super();
     this.id = id;
     this.setupVillage = null;
+    this.setState({ cards: [], roads: 15, villages: 5, cities: 4 });
+  }
 
-    const cards = {};
-    for (const resource of BoardData.resources) {
-      cards[resource] = 0;
+  drawCard(type) {
+    const { cards } = this.state;
+    cards.push(new Card(type));
+    this.setState({ cards });
+  }
+
+  hasCards(types) {
+    const { cards } = this.state;
+    for (const [type, number] of Object.entries(types)) {
+      const available = cards.filter((c) => c.type == type).length;
+      if (available < number) {
+        return false;
+      }
     }
-    this.setState({ cards, roads: 15, villages: 5, cities: 4 });
+    return true;
+  }
+
+  useCards(types) {
+    const { cards } = this.state;
+    for (const [type, number] of Object.entries(types)) {
+      for (let i = 0; i < number; i++) {
+        cards.splice(
+          cards.findIndex((c) => c.type == type),
+          1
+        );
+      }
+    }
+    this.setState({ cards });
   }
 }
 
@@ -179,6 +204,7 @@ class Game extends Element {
       currentPlayer: firstPlayer,
       setupTurn: 0,
       turn: null,
+      robberTurn: null,
     });
 
     for (const vertex of vertexes) {
@@ -208,15 +234,8 @@ class Game extends Element {
     currentPlayer.setState({ villages: state.villages - 1 });
 
     if (this.state.step !== "setup_village") {
-      const { wood, brick, wheat, sheep } = state.cards;
-      currentPlayer.setState({
-        cards: {
-          wood: wood - 1,
-          brick: brick - 1,
-          wheat: wheat - 1,
-          sheep: sheep - 1,
-        },
-      });
+      currentPlayer.useCards({ wood: 1, brick: 1, wheat: 1, sheep: 1 });
+      this.selectBuildable();
     }
   }
 
@@ -227,13 +246,8 @@ class Game extends Element {
     currentPlayer.setState({ roads: state.roads - 1 });
 
     if (this.state.step !== "setup_road") {
-      const { wood, brick } = state.cards;
-      currentPlayer.setState({
-        cards: {
-          wood: wood - 1,
-          brick: brick - 1,
-        },
-      });
+      currentPlayer.useCards({ wood: 1, brick: 1 });
+      this.selectBuildable();
     }
   }
 
@@ -246,11 +260,9 @@ class Game extends Element {
       // Players get a card for each hex adjacent to their village on the
       // second setup turn.
       if (state.setupTurn >= players.length) {
-        const { cards } = currentPlayer.state;
         for (const hex of vertex.hexes) {
-          cards[hex.type] += 1;
+          currentPlayer.drawCard(hex.type);
         }
-        currentPlayer.setState({ cards });
       }
 
       // Automatically advance to the next turn since there's nothing else the
@@ -293,6 +305,14 @@ class Game extends Element {
       case "roll_dice":
         this.throwDice();
         return;
+      case "robber_discard":
+        // TODO
+        this.nextTurn();
+        return;
+      case "robber_place":
+        // TODO
+        this.nextTurn();
+        return;
     }
   }
 
@@ -303,6 +323,7 @@ class Game extends Element {
     }
     if (diceValue === 7) {
       this.handleRobber();
+      return;
     }
     for (const hex of this.hexes) {
       if (hex.value !== diceValue) {
@@ -312,10 +333,7 @@ class Game extends Element {
         // TODO: handle cities
         const { player: playerId } = vertex.state;
         if (playerId !== null) {
-          const player = this.players[playerId - 1];
-          const { cards } = player.state;
-          cards[hex.type] += 1;
-          player.setState({ cards });
+          this.players[playerId - 1].drawCard(hex.type);
         }
       }
     }
@@ -323,7 +341,30 @@ class Game extends Element {
   }
 
   handleRobber() {
-    console.log("Robber!");
+    this.setState({
+      step: "robber_discard",
+      action: "robber_discard",
+      robberTurn: 0,
+    });
+    this.selectBuildable();
+    this.setState({ currentPlayer: this.currentPlayer.id });
+  }
+
+  nextRobberTurn() {
+    let { robberTurn } = this.state;
+    robberTurn += 1;
+
+    const { players_number } = this.state;
+    if (robberTurn === players_number) {
+      // Everyone has discarded cards, let's advance
+      this.setState({
+        step: "robber_place",
+        action: "robber_place",
+        robberTurn: null,
+      });
+    } else {
+      this.setState({ robberTurn });
+    }
   }
 
   nextTurn() {
@@ -348,6 +389,12 @@ class Game extends Element {
             action: "roll_dice",
           });
         }
+        break;
+      case "robber_discard":
+        this.nextRobberTurn();
+        break;
+      case "robber_place":
+        this.setState({ step: "turn", action: "roll_dice" });
         break;
       case "turn":
         this.setState({ turn: this.state.turn + 1, action: "roll_dice" });
@@ -384,16 +431,17 @@ class Game extends Element {
 
   get currentPlayer() {
     const { state, players } = this;
-    const { step, firstPlayer, setupTurn, turn } = state;
+    const { step, firstPlayer, robberTurn, setupTurn, turn } = state;
+    let player;
     if (step === "setup_village" || step === "setup_road") {
-      const player_offset = SETUP_PLAYER_TURNS[players.length][setupTurn];
-      let player = firstPlayer + player_offset;
-      if (player > players.length) {
-        player -= players.length;
-      }
-      return this.players[player - 1];
+      const playerOffset = SETUP_PLAYER_TURNS[players.length][setupTurn];
+      player = firstPlayer + playerOffset;
+    } else if (step === "robber_discard") {
+      player = firstPlayer + robberTurn;
+    } else {
+      player = turn + firstPlayer;
     }
-    return players[(turn + firstPlayer - 1) % players.length];
+    return players[(player - 1) % players.length];
   }
 
   canBuildRoad(edge) {
@@ -414,9 +462,8 @@ class Game extends Element {
           // No roads left
           return false;
         }
-        const { wood, brick } = state.cards;
         // Check if player has enough resources
-        if (wood < 1 || brick < 1) {
+        if (!currentPlayer.hasCards({ wood: 1, brick: 1 })) {
           return false;
         }
         for (const vertex of edge.vertexes) {
@@ -456,9 +503,10 @@ class Game extends Element {
           // No villages left
           return;
         }
-        const { wood, brick, sheep, wheat } = state.cards;
         // First, check if player has enough resources
-        if (wood < 1 || brick < 1 || sheep < 1 || wheat < 1) {
+        if (
+          !currentPlayer.hasCards({ wood: 1, brick: 1, sheep: 1, wheat: 1 })
+        ) {
           return false;
         }
         for (const sibling of vertex.siblings) {
@@ -484,6 +532,12 @@ const ACTIONS = {
   },
   roll_dice: {
     text: "Roll Dice",
+  },
+  robber_discard: {
+    text: "Discard Cards",
+  },
+  robber_place: {
+    text: "Place Robber",
   },
   setup_village: {
     text: "Place Village",
@@ -574,6 +628,25 @@ class Die extends Element {
       el.classList.remove(`die-${i}`);
     }
     el.classList.add(`die-${value}`);
+  }
+}
+
+class Card extends Element {
+  constructor(type) {
+    super();
+    this.type = type;
+    this.setState({ selected: null, selectable: true });
+  }
+
+  get isSelected() {
+    return this.state.selectable && this.state.selected;
+  }
+
+  toggle() {
+    const { selectable, selected } = this.state;
+    if (selectable) {
+      this.setState({ selected: !selected });
+    }
   }
 }
 

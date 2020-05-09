@@ -123,10 +123,12 @@ function initState(saveState) {
         let html = `<div class="player-${game.state.currentPlayer}">
           <div class="current-player "></div>
           <div class=cards>`;
-        for (let type of BoardData.resources) {
-          for (let i = 0; i < playerState.cards[type] || 0; i++) {
-            html += `<div class="card ${type}"></div>`;
-          }
+        const { cards } = playerState;
+        for (const [id, card] of Object.entries(cards)) {
+          const selected = card.isSelected ? "selected" : "";
+          html += `<div
+              data-card-id=${id}
+              class="card ${card.type} ${selected}"></div>`;
         }
         html += `</div><div class=pieces>`;
         for (let piece of ["roads", "villages", "cities"]) {
@@ -136,6 +138,14 @@ function initState(saveState) {
         }
         html += `</div></div>`;
         gameUi.innerHTML = html;
+
+        const onCardClick = (ev) => {
+          const id = ev.target.getAttribute("data-card-id");
+          cards[id].toggle();
+        };
+        document
+          .querySelectorAll(".cards")
+          .forEach((c) => c.addEventListener("click", onCardClick));
       }
     },
   };
